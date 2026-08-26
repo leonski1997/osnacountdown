@@ -43,7 +43,29 @@
       max-width: 90vw;
       width: 380px;
       box-shadow: 0 4px 16px var(--shadow-soft);
+      position: relative;
+      transition: background 0.3s ease, padding 0.3s ease;
     }
+    #box-toggle {
+      position: absolute; top: 10px; right: 14px; cursor: pointer;
+      font-size: 1.1em; color: white; user-select: none; z-index: 5;
+      background: var(--accent-bg); width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+    }
+    #box-toggle-label {
+      display: none; background: var(--accent-bg); color: white;
+      padding: 10px 22px; border-radius: 12px; font-weight: bold; font-size: 0.95em; cursor: pointer;
+    }
+    .box.eingeklappt {
+      background: var(--card-strong);
+      padding: 10px 16px;
+      min-height: 48px; min-width: 140px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .box.eingeklappt #box-inhalt { display: none; }
+    .box.eingeklappt #box-toggle { display: none; }
+    .box.eingeklappt #box-toggle-label { display: inline-block; }
     h1 { font-size: 3em; margin: 0 0 4px 0; }
     .fortschritt-container {
       background: rgba(150,150,150,0.3);
@@ -83,13 +105,13 @@
     .nav-item.aktiv { background: rgba(150,150,150,0.2); font-weight: bold; }
     .nav-item .icon { font-size: 1.5em; }
 
+    .hidden { display: none !important; }
     .screen.hidden { display: none; }
 
     .frage-button {
-      display: block; width: 100%; margin: 8px 0;
-      padding: 12px; border-radius: 12px; border: none;
-      background: var(--accent-bg); color: white;
-      font-size: 1em; cursor: pointer;
+      display: inline-block; background: var(--accent-bg); color: white;
+      text-decoration: none; border: none; padding: 14px 28px; margin: 8px;
+      border-radius: 12px; font-size: 1.25em; cursor: pointer; font-family: Arial, sans-serif;
     }
     .frage-button:disabled { opacity: 0.5; cursor: default; }
     .streak-flammen { font-size: 1.4em; margin: 0 0 2px 0; }
@@ -182,16 +204,20 @@
   </div>
 
   <div id="screen-countdown" class="screen">
-    <div class="box">
-      <p id="online-status" class="hidden" style="color:#4caf50; font-weight:bold; margin-bottom:8px;">🟢 ist gerade auch da</p>
-      <h1 id="countdown-zahl">-</h1>
-      <p>Tage bis wir wieder zusammen sind ❤️</p>
-      <p id="countdown-wochen"></p>
-      <div class="fortschritt-container"><div class="fortschritt-bar" id="fortschritt-bar"></div></div>
-      <p class="fortschritt-text" id="fortschritt-text"></p>
-      <p class="spruch" id="spruch-text"></p>
-      <p class="ferien" id="ferien-text"></p>
-      <button class="frage-button" id="gedanke-button" style="margin-top:14px;">Ich denk an dich ❤️</button>
+    <div class="box" id="countdown-box">
+      <div id="box-toggle">▾</div>
+      <div id="box-inhalt">
+        <p id="online-status" class="hidden" style="color:#4caf50; font-weight:bold; margin-bottom:8px;">🟢 ist gerade auch da</p>
+        <h1 id="countdown-zahl">-</h1>
+        <p>Tage bis wir wieder zusammen sind ❤️</p>
+        <p id="countdown-wochen"></p>
+        <div class="fortschritt-container"><div class="fortschritt-bar" id="fortschritt-bar"></div></div>
+        <p class="fortschritt-text" id="fortschritt-text"></p>
+        <p class="spruch" id="spruch-text"></p>
+        <p class="ferien" id="ferien-text"></p>
+        <button class="frage-button" id="gedanke-button" style="margin-top:14px;">Ich denk an dich ❤️</button>
+      </div>
+      <span id="box-toggle-label">Einblenden</span>
     </div>
   </div>
 
@@ -434,6 +460,13 @@
       else zeigeFallendePartikel(['#ffffff'], 15);
     }
 
+    // ---------- Box ein-/ausklappen ----------
+    function toggleBox() {
+      document.getElementById('countdown-box').classList.toggle('eingeklappt');
+    }
+    document.getElementById('box-toggle').addEventListener('click', toggleBox);
+    document.getElementById('box-toggle-label').addEventListener('click', toggleBox);
+
     function renderCountdown() {
       var heute = new Date();
       var diffMs = ZIEL_DATUM - heute;
@@ -579,11 +612,14 @@
         html += '<button class="frage-button" data-wahl="Leon">Leon</button>';
         html += '<button class="frage-button" data-wahl="Lotta">Lotta</button>';
       } else if (!partnerStimme) {
-        html += '<p>Du hast <b>' + meineStimme + '</b> gewählt.</p>';
-        html += '<p>Warte noch auf ' + partnerName + '...</p>';
+        html += '<p>Du hast abgestimmt: <b>' + meineStimme + '</b></p>';
+        html += '<p>Warte noch auf ' + partnerName + 's Stimme...</p>';
       } else {
         var einig = meineStimme === partnerStimme;
-        html += '<p>' + (einig ? '🤝 Ihr wart euch einig: ' + meineStimme : '😄 Ihr wart euch uneinig - du: ' + meineStimme + ', ' + partnerName + ': ' + partnerStimme) + '</p>';
+        var meinName = meinUser === 'leon' ? 'Leon' : 'Lotta';
+        html += '<p>' + meinName + ' hat abgestimmt für: <b>' + meineStimme + '</b></p>';
+        html += '<p>' + partnerName + ' hat abgestimmt für: <b>' + partnerStimme + '</b></p>';
+        html += '<p>' + (einig ? 'Ihr seid euch einig! 🎉' : 'Uneinigkeit 😄') + '</p>';
         if (einig && letztGefeierteFrage !== heute) {
           letztGefeierteFrage = heute;
           zeigeKonfetti();
