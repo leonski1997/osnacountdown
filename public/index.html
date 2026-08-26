@@ -127,6 +127,20 @@
     #user-header.hidden { display: none; }
     #user-header a { color: var(--text); text-decoration: underline; cursor: pointer; }
 
+    .statistik-box {
+      background: var(--card-strong); border-radius: 18px; padding: 22px 24px;
+      max-width: 90vw; width: 380px; margin: 0 auto 16px auto; color: var(--text);
+      box-shadow: 0 4px 16px var(--shadow-soft);
+    }
+    .statistik-titel { font-size: 0.95em; font-weight: bold; opacity: 0.85; margin: 0 0 12px 0; }
+    .statistik-zahl-gross { font-size: 2.6em; font-weight: bold; margin: 0; }
+    .statistik-zeile { display: flex; justify-content: space-between; padding: 8px 2px; border-bottom: 1px solid var(--shadow-soft); font-size: 0.95em; }
+    .statistik-zeile:last-child { border-bottom: none; }
+    .statistik-zeile b { color: var(--accent-bg); }
+
+    .historie-monat { font-weight: bold; margin: 16px 0 6px 0; cursor: pointer; }
+    .historie-eintrag { padding: 6px 0; border-bottom: 1px solid rgba(150,150,150,0.2); font-size: 0.9em; text-align: left; }
+
     #briefe-liste { max-height: 50vh; overflow-y: auto; text-align: left; margin-bottom: 6px; }
     .brief-blase {
       max-width: 75%; padding: 8px 12px; border-radius: 12px; margin: 6px 0;
@@ -179,7 +193,21 @@
   <div id="screen-abstimmung" class="screen hidden">
     <div class="box">
       <div id="abstimmung-inhalt"><p>Lädt...</p></div>
+      <a class="zurueck-link" id="link-historie">📜 Historie ansehen</a> &nbsp;|&nbsp;
+      <a class="zurueck-link" id="link-statistik" style="display:inline;">📊 Statistik ansehen</a>
     </div>
+  </div>
+
+  <div id="screen-historie" class="screen hidden">
+    <div class="box" style="width: 90vw; max-width: 500px; max-height: 75vh; overflow-y: auto;">
+      <div id="historie-inhalt"><p>Lädt...</p></div>
+      <a class="zurueck-link" onclick="document.getElementById('nav-abstimmung').click()">← Zurück</a>
+    </div>
+  </div>
+
+  <div id="screen-statistik" class="screen hidden">
+    <div id="statistik-inhalt"><p>Lädt...</p></div>
+    <a class="zurueck-link" onclick="document.getElementById('nav-abstimmung').click()" style="text-align:center;">← Zurück</a>
   </div>
 
   <div id="screen-briefe" class="screen hidden">
@@ -250,6 +278,8 @@
         document.getElementById('screen-countdown').classList.add('hidden');
         document.getElementById('screen-abstimmung').classList.add('hidden');
         document.getElementById('screen-briefe').classList.add('hidden');
+        document.getElementById('screen-historie').classList.add('hidden');
+        document.getElementById('screen-statistik').classList.add('hidden');
         if (nav) nav.classList.add('hidden');
         return;
       }
@@ -562,6 +592,113 @@
       ladeAbstimmung();
     }
 
+    // ---------- Historie ----------
+    var MONATS_NAMEN = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+
+    async function zeigeHistorie() {
+      zeigeScreen('historie');
+      var container = document.getElementById('historie-inhalt');
+      container.innerHTML = '<p>Lädt...</p>';
+
+      var snapshot = await getDocs(collection(db, 'abstimmung'));
+      var eintraege = [];
+      snapshot.forEach(function (docSnap) {
+        var d = docSnap.data();
+        if (d.leon && d.lotta) { eintraege.push({ datum: docSnap.id, frage: d.frage, leon: d.leon, lotta: d.lotta }); }
+      });
+      eintraege.sort(function (a, b) { return b.datum.localeCompare(a.datum); });
+
+      if (eintraege.length === 0) {
+        container.innerHTML = '<p>Noch keine gemeinsam beantworteten Fragen.</p>';
+        return;
+      }
+
+      var proMonat = {};
+      eintraege.forEach(function (e) {
+        var monatSchluessel = e.datum.substring(0, 7);
+        (proMonat[monatSchluessel] = proMonat[monatSchluessel] || []).push(e);
+      });
+
+      var html = '';
+      Object.keys(proMonat).sort().reverse().forEach(function (monatSchluessel) {
+        var teile = monatSchluessel.split('-');
+        var monatName = MONATS_NAMEN[parseInt(teile[1], 10) - 1] + ' ' + teile[0];
+        html += '<div class="historie-monat">' + monatName + ' (' + proMonat[monatSchluessel].length + ')</div>';
+        proMonat[monatSchluessel].forEach(function (e) {
+          var tag = e.datum.split('-')[2];
+          var einig = e.leon === e.lotta;
+          html += '<div class="historie-eintrag">' + tag + '.: ' + e.frage + '<br>Leon: ' + e.leon + ' | Lotta: ' + e.lotta + ' ' + (einig ? '🤝' : '😄') + '</div>';
+        });
+      });
+      container.innerHTML = html;
+    }
+
+    document.getElementById('link-historie').addEventListener('click', zeigeHistorie);
+
+    // ---------- Statistik ----------
+    async function zeigeStatistik() {
+      zeigeScreen('statistik');
+      var container = document.getElementById('statistik-inhalt');
+      container.innerHTML = '<p>Lädt...</p>';
+
+      var snapshot = await getDocs(collection(db, 'abstimmung'));
+      var beantwortet = 0, einigkeit = 0, uneinigkeit = 0;
+      var w = { leonFuerLeon: 0, leonFuerLotta: 0, lottaFuerLeon: 0, lottaFuerLotta: 0 };
+
+      snapshot.forEach(function (docSnap) {
+        var d = docSnap.data();
+        if (d.leon === 'Leon') w.leonFuerLeon++; else if (d.leon === 'Lotta') w.leonFuerLotta++;
+        if (d.lotta === 'Leon') w.lottaFuerLeon++; else if (d.lotta === 'Lotta') w.lottaFuerLotta++;
+        if (d.leon && d.lotta) {
+          beantwortet++;
+          if (d.leon === d.lotta) einigkeit++; else uneinigkeit++;
+        }
+      });
+
+      var gLeonSnap = await getDoc(doc(db, 'einstellungen', 'gedankeAnzahl_leon'));
+      var gLottaSnap = await getDoc(doc(db, 'einstellungen', 'gedankeAnzahl_lotta'));
+      var gLeon = gLeonSnap.exists() ? (gLeonSnap.data().anzahl || 0) : 0;
+      var gLotta = gLottaSnap.exists() ? (gLottaSnap.data().anzahl || 0) : 0;
+
+      var html = '';
+      if (beantwortet === 0) {
+        html = '<div class="statistik-box"><p>Noch keine gemeinsam beantwortete Frage.</p></div>';
+      } else {
+        var prozentEinig = Math.round((einigkeit / beantwortet) * 100);
+        html += '<div class="statistik-box">' +
+          '<p class="statistik-titel">📊 Gemeinsam beantwortete Fragen</p>' +
+          '<p class="statistik-zahl-gross">' + beantwortet + '</p>' +
+          '<div class="statistik-zeile"><span>🤝 Einig</span><b>' + einigkeit + ' (' + prozentEinig + '%)</b></div>' +
+          '<div class="statistik-zeile"><span>😄 Uneinig</span><b>' + uneinigkeit + '</b></div>' +
+          '</div>';
+
+        var leonGesamt = w.leonFuerLeon + w.leonFuerLotta;
+        var lottaGesamt = w.lottaFuerLeon + w.lottaFuerLotta;
+        if (leonGesamt > 0 || lottaGesamt > 0) {
+          html += '<div class="statistik-box"><p class="statistik-titel">🗳️ Wählmuster</p>';
+          if (leonGesamt > 0) {
+            html += '<div class="statistik-zeile"><span>Leon → sich selbst</span><b>' + w.leonFuerLeon + 'x</b></div>' +
+              '<div class="statistik-zeile"><span>Leon → Lotta</span><b>' + w.leonFuerLotta + 'x</b></div>';
+          }
+          if (lottaGesamt > 0) {
+            html += '<div class="statistik-zeile"><span>Lotta → sich selbst</span><b>' + w.lottaFuerLotta + 'x</b></div>' +
+              '<div class="statistik-zeile"><span>Lotta → Leon</span><b>' + w.lottaFuerLeon + 'x</b></div>';
+          }
+          html += '</div>';
+        }
+      }
+
+      if (gLeon > 0 || gLotta > 0) {
+        html += '<div class="statistik-box"><p class="statistik-titel">❤️ "Ich denk an dich"-Klicks</p>' +
+          '<div class="statistik-zeile"><span>Leon</span><b>' + gLeon + '</b></div>' +
+          '<div class="statistik-zeile"><span>Lotta</span><b>' + gLotta + '</b></div></div>';
+      }
+
+      container.innerHTML = html;
+    }
+
+    document.getElementById('link-statistik').addEventListener('click', zeigeStatistik);
+
     // ---------- Chat (Brief-Fach) ----------
     async function ladeBriefe() {
       if (!istAngemeldet) return;
@@ -649,9 +786,10 @@
 
     // ---------- Navigation ----------
     function zeigeScreen(name) {
-      ['countdown', 'abstimmung', 'briefe'].forEach(function (n) {
+      ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik'].forEach(function (n) {
         document.getElementById('screen-' + n).classList.toggle('hidden', n !== name);
-        document.getElementById('nav-' + n).classList.toggle('aktiv', n === name);
+        var navItem = document.getElementById('nav-' + n);
+        if (navItem) navItem.classList.toggle('aktiv', n === name || (name === 'historie' && n === 'abstimmung') || (name === 'statistik' && n === 'abstimmung'));
       });
     }
     document.getElementById('nav-countdown').addEventListener('click', () => zeigeScreen('countdown'));
