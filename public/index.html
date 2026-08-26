@@ -26,6 +26,8 @@
     body {
       font-family: Arial, sans-serif;
       background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
+      background-size: cover;
+      background-position: center;
       color: var(--text);
       min-height: 100vh;
       display: flex;
@@ -485,6 +487,42 @@
     document.getElementById('box-toggle').addEventListener('click', toggleBox);
     document.getElementById('box-toggle-label').addEventListener('click', toggleBox);
 
+    // ---------- Tägliches Foto (von Google Drive) ----------
+    async function getBilderIdListeGecached() {
+      var cache = localStorage.getItem('bilderIdCache');
+      var zeitstempel = localStorage.getItem('bilderIdCacheZeit');
+      if (cache && zeitstempel && (Date.now() - Number(zeitstempel)) < 24 * 60 * 60 * 1000) {
+        return JSON.parse(cache);
+      }
+
+      var apiKey = window.__DRIVE_API_KEY__;
+      var ordnerId = window.__DRIVE_ORDNER_ID__;
+      var url = 'https://www.googleapis.com/drive/v3/files?q=%27' + ordnerId +
+        '%27+in+parents+and+(mimeType+contains+%27image%27)&fields=files(id)&pageSize=1000&key=' + apiKey;
+
+      try {
+        var res = await fetch(url);
+        var daten = await res.json();
+        var ids = (daten.files || []).map(function (f) { return f.id; });
+        localStorage.setItem('bilderIdCache', JSON.stringify(ids));
+        localStorage.setItem('bilderIdCacheZeit', String(Date.now()));
+        return ids;
+      } catch (e) {
+        console.error('Fotos konnten nicht geladen werden:', e);
+        return cache ? JSON.parse(cache) : [];
+      }
+    }
+
+    async function ladeFotoDesTages() {
+      var ids = await getBilderIdListeGecached();
+      if (ids.length === 0) return;
+      var tagIndex = getTagIndex();
+      var index = tagIndex % ids.length;
+      var apiKey = window.__DRIVE_API_KEY__;
+      var bildUrl = 'https://www.googleapis.com/drive/v3/files/' + ids[index] + '?alt=media&key=' + apiKey;
+      document.body.style.backgroundImage = "url('" + bildUrl + "')";
+    }
+
     function renderCountdown() {
       var heute = new Date();
       var diffMs = ZIEL_DATUM - heute;
@@ -934,6 +972,7 @@
     wendeFarbmodusAn();
     renderCountdown();
     pruefeJahreszeitenDeko();
+    ladeFotoDesTages();
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js').catch(function (e) {
