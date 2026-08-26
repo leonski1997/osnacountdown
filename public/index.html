@@ -242,6 +242,7 @@
       <div class="nav">
         <a id="link-historie">📜 Historie ansehen</a>
         <a id="link-statistik">📊 Statistik ansehen</a>
+        <a id="reset-link" class="hidden">🔄 Antwort zurücksetzen</a>
       </div>
     </div>
   </div>
@@ -625,20 +626,21 @@
 
       html += '<h2>' + frage + '</h2>';
 
+      var zeigeReset = false;
       if (!meineStimme) {
         html += '<button class="frage-button" data-wahl="Leon">Leon</button>';
         html += '<button class="frage-button" data-wahl="Lotta">Lotta</button>';
       } else if (!partnerStimme) {
         html += '<p>Du hast abgestimmt: <b>' + meineStimme + '</b></p>';
         html += '<p>Warte noch auf ' + partnerName + 's Stimme...</p>';
-        html += '<div class="nav"><a id="reset-link">🔄 Antwort zurücksetzen</a></div>';
+        zeigeReset = true;
       } else {
         var einig = meineStimme === partnerStimme;
         var meinName = meinUser === 'leon' ? 'Leon' : 'Lotta';
         html += '<p>' + meinName + ' hat abgestimmt für: <b>' + meineStimme + '</b></p>';
         html += '<p>' + partnerName + ' hat abgestimmt für: <b>' + partnerStimme + '</b></p>';
         html += '<p>' + (einig ? 'Ihr seid euch einig! 🎉' : 'Uneinigkeit 😄') + '</p>';
-        html += '<div class="nav"><a id="reset-link">🔄 Antwort zurücksetzen</a></div>';
+        zeigeReset = true;
         if (einig && letztGefeierteFrage !== heute) {
           letztGefeierteFrage = heute;
           zeigeKonfetti();
@@ -646,13 +648,7 @@
       }
 
       container.innerHTML = html;
-
-      var resetLink = document.getElementById('reset-link');
-      if (resetLink) {
-        resetLink.addEventListener('click', function () {
-          document.getElementById('bestaetigung-overlay').classList.remove('hidden');
-        });
-      }
+      document.getElementById('reset-link').classList.toggle('hidden', !zeigeReset);
 
       container.querySelectorAll('.frage-button').forEach(function (btn) {
         btn.addEventListener('click', function () { sendeStimme(btn.dataset.wahl, heute); });
@@ -729,6 +725,9 @@
     }
 
     document.getElementById('link-historie').addEventListener('click', zeigeHistorie);
+    document.getElementById('reset-link').addEventListener('click', function () {
+      document.getElementById('bestaetigung-overlay').classList.remove('hidden');
+    });
 
     // ---------- Statistik ----------
     async function zeigeStatistik() {
