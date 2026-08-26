@@ -17,11 +17,17 @@ jobs:
       - name: Firebase CLI installieren
         run: npm install -g firebase-tools
 
-      - name: Bereitstellen
+      - name: Firestore-Regeln bereitstellen
+        id: deploy-rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
+        run: firebase deploy --only firestore:rules --project osnacountdown --non-interactive 2>&1 | tee /tmp/rules-log.txt
+
+      - name: Hosting bereitstellen
         id: deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
-        run: firebase deploy --only hosting,firestore:rules --project osnacountdown --non-interactive 2>&1 | tee /tmp/deploy-log.txt
+        run: firebase deploy --only hosting --project osnacountdown --non-interactive 2>&1 | tee /tmp/deploy-log.txt
 
       - name: Protokoll sichern (nur falls nötig zum Nachschauen)
         if: always()
