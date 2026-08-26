@@ -141,7 +141,15 @@
     const db = getFirestore(app);
     var istAngemeldet = false;
 
-    signInAnonymously(auth).catch(function (e) { console.error('Anmeldung fehlgeschlagen:', e); });
+    var anmeldungFehlgeschlagen = false;
+    signInAnonymously(auth).catch(function (e) {
+      console.error('Anmeldung fehlgeschlagen:', e);
+      anmeldungFehlgeschlagen = true;
+      var container = document.getElementById('abstimmung-inhalt');
+      if (container) {
+        container.innerHTML = '<p>⚠️ Verbindung zur Datenbank fehlgeschlagen.<br>(' + e.code + ')</p>';
+      }
+    });
     onAuthStateChanged(auth, function (user) {
       istAngemeldet = !!user;
       if (user && document.getElementById('screen-abstimmung').classList.contains('hidden') === false) {
@@ -272,8 +280,15 @@
     var letztGefeierteFrage = null;
 
     async function ladeAbstimmung() {
-      if (!istAngemeldet) return;
       var container = document.getElementById('abstimmung-inhalt');
+      if (anmeldungFehlgeschlagen) {
+        container.innerHTML = '<p>⚠️ Verbindung zur Datenbank fehlgeschlagen.</p>';
+        return;
+      }
+      if (!istAngemeldet) {
+        container.innerHTML = '<p>Verbinde mit der Datenbank...</p>';
+        return;
+      }
       container.innerHTML = '<p>Lädt...</p>';
 
       var heute = heutigesDatumSchluessel();
