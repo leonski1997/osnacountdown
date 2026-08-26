@@ -20,4 +20,4 @@ jobs:
       - name: Bereitstellen
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
-        run: firebase deploy --only hosting --project osnacountdown --non-interactive
+        run: firebase deploy --only hosting,firestore:rules --project osnacountdown --non-interactive
