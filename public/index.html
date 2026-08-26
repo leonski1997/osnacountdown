@@ -30,13 +30,23 @@
       background-position: center;
       color: var(--text);
       min-height: 100vh;
+      text-align: center;
+      transition: background 0.3s ease;
+      margin: 0;
+    }
+    .screen {
+      min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      align-items: center;
       justify-content: center;
-      text-align: center;
-      padding-bottom: 90px;
-      transition: background 0.3s ease;
+      align-items: center;
+      padding: 20px 20px 90px 20px;
+      box-sizing: border-box;
+    }
+    #screen-countdown {
+      justify-content: flex-end;
+      padding-bottom: 12vh;
     }
     .box {
       background: var(--card);
