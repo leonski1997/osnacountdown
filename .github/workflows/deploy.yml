@@ -29,9 +29,13 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
         run: firebase deploy --only hosting --project osnacountdown --non-interactive 2>&1 | tee /tmp/deploy-log.txt
 
-      - name: Protokoll sichern (nur falls nötig zum Nachschauen)
+      - name: Protokoll auf Debug-Branch sichern (für Diagnose)
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-log
-          path: /tmp/deploy-log.txt
+        run: |
+          git config user.email "debug@example.com"
+          git config user.name "Debug Bot"
+          git checkout -B debug-logs
+          cp /tmp/rules-log.txt rules-log.txt 2>/dev/null || echo "kein rules-log" > rules-log.txt
+          git add rules-log.txt
+          git commit -m "Debug-Protokoll" || echo "nichts zu committen"
+          git push origin debug-logs --force
