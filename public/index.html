@@ -92,6 +92,15 @@
     .streak-anzeige { font-weight: bold; margin: 0 0 12px 0; }
     .ergebnis-zeile { display: flex; justify-content: space-between; padding: 6px 0; }
     .zurueck-link { display: block; margin-top: 14px; font-size: 0.85em; opacity: 0.75; cursor: pointer; }
+
+    #briefe-liste { max-height: 50vh; overflow-y: auto; text-align: left; margin-bottom: 6px; }
+    .brief-blase {
+      max-width: 75%; padding: 8px 12px; border-radius: 12px; margin: 6px 0;
+      font-size: 0.95em; word-wrap: break-word;
+    }
+    .brief-eigen { background: var(--accent-bg); color: white; margin-left: auto; }
+    .brief-partner { background: rgba(150,150,150,0.25); }
+    .brief-zeit { font-size: 0.7em; opacity: 0.7; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -117,7 +126,13 @@
   </div>
 
   <div id="screen-briefe" class="screen hidden">
-    <div class="box"><p>💌 Chat folgt im nächsten Schritt</p></div>
+    <div class="box" style="width: 90vw; max-width: 500px;">
+      <div id="briefe-liste"></div>
+      <div style="display:flex; gap:6px; margin-top:10px;">
+        <input type="text" id="brief-eingabe" placeholder="Nachricht schreiben..." style="flex:1; padding:10px; border-radius:10px; border:none;">
+        <button id="brief-senden-button" class="frage-button" style="width:auto; margin:0;">Senden</button>
+      </div>
+    </div>
   </div>
 
   <div id="bottom-nav">
@@ -130,7 +145,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
     const firebaseConfig = window.__FIREBASE_CONFIG__ || { projectId: "osnacountdown" };
     // window.__FIREBASE_CONFIG__ wird aus einer separaten Datei geladen (siehe unten im HTML),
@@ -355,6 +370,54 @@
       ladeAbstimmung();
     }
 
+    // ---------- Chat (Brief-Fach) ----------
+    async function ladeBriefe() {
+      if (!istAngemeldet) return;
+      var container = document.getElementById('briefe-liste');
+      container.innerHTML = '<p>Lädt...</p>';
+
+      var q = query(collection(db, 'briefe'), orderBy('zeitstempel', 'asc'));
+      var snapshot = await getDocs(q);
+
+      var html = '';
+      snapshot.forEach(function (docSnap) {
+        var d = docSnap.data();
+        var eigen = d.von === meinUser;
+        var datum = new Date(d.zeitstempel);
+        var zeitText = datum.toLocaleDateString('de-DE') + ' ' + datum.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+        html += '<div class="brief-blase ' + (eigen ? 'brief-eigen' : 'brief-partner') + '">' +
+          escapeHtml(d.text) + '<div class="brief-zeit">' + zeitText + '</div></div>';
+      });
+
+      container.innerHTML = html || '<p style="text-align:center;">Noch keine Nachrichten.</p>';
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.innerText = text;
+      return div.innerHTML;
+    }
+
+    async function sendeBrief() {
+      var eingabe = document.getElementById('brief-eingabe');
+      var text = eingabe.value.trim();
+      if (!text) return;
+
+      eingabe.value = '';
+      await addDoc(collection(db, 'briefe'), {
+        von: meinUser,
+        text: text,
+        zeitstempel: Date.now()
+      });
+      ladeBriefe();
+    }
+
+    document.getElementById('brief-senden-button').addEventListener('click', sendeBrief);
+    document.getElementById('brief-eingabe').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') sendeBrief();
+    });
+
     // ---------- Navigation ----------
     function zeigeScreen(name) {
       ['countdown', 'abstimmung', 'briefe'].forEach(function (n) {
@@ -364,7 +427,7 @@
     }
     document.getElementById('nav-countdown').addEventListener('click', () => zeigeScreen('countdown'));
     document.getElementById('nav-abstimmung').addEventListener('click', () => { zeigeScreen('abstimmung'); ladeAbstimmung(); });
-    document.getElementById('nav-briefe').addEventListener('click', () => zeigeScreen('briefe'));
+    document.getElementById('nav-briefe').addEventListener('click', () => { zeigeScreen('briefe'); ladeBriefe(); });
 
     // ---------- Dark/Light/System-Modus ----------
     var farbModi = ['system', 'light', 'dark'];
