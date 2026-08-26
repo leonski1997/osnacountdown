@@ -242,14 +242,21 @@
     }
 
     function zeigeAppNachIdentitaet() {
+      var nav = document.getElementById('bottom-nav');
       if (!meinUser) {
         document.getElementById('screen-identitaet').classList.remove('hidden');
         document.getElementById('user-header').classList.add('hidden');
+        document.getElementById('screen-countdown').classList.add('hidden');
+        document.getElementById('screen-abstimmung').classList.add('hidden');
+        document.getElementById('screen-briefe').classList.add('hidden');
+        if (nav) nav.classList.add('hidden');
         return;
       }
       document.getElementById('screen-identitaet').classList.add('hidden');
       document.getElementById('user-header').classList.remove('hidden');
       document.getElementById('user-name-label').innerText = meinUser === 'leon' ? 'Leon' : 'Lotta';
+      if (nav) nav.classList.remove('hidden');
+      zeigeScreen('countdown');
     }
 
     document.getElementById('identitaet-leon-button').addEventListener('click', () => setzeIdentitaet('leon'));
