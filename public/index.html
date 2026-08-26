@@ -101,11 +101,20 @@
     .brief-eigen { background: var(--accent-bg); color: white; margin-left: auto; }
     .brief-partner { background: rgba(150,150,150,0.25); }
     .brief-zeit { font-size: 0.7em; opacity: 0.7; margin-top: 2px; }
+
+    #gedanke-toast {
+      position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+      background: var(--accent-bg); color: white; padding: 12px 24px;
+      border-radius: 14px; font-weight: bold; z-index: 500;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35); max-width: 85vw; text-align: center;
+    }
+    #gedanke-toast.hidden { display: none; }
   </style>
 </head>
 <body>
 
   <div id="modus-button">🖥️</div>
+  <div id="gedanke-toast" class="hidden"></div>
 
   <div id="screen-countdown" class="screen">
     <div class="box">
@@ -116,6 +125,7 @@
       <p class="fortschritt-text" id="fortschritt-text"></p>
       <p class="spruch" id="spruch-text"></p>
       <p class="ferien" id="ferien-text"></p>
+      <button class="frage-button" id="gedanke-button" style="margin-top:14px;">Ich denk an dich ❤️</button>
     </div>
   </div>
 
@@ -170,6 +180,7 @@
       if (user && document.getElementById('screen-abstimmung').classList.contains('hidden') === false) {
         ladeAbstimmung();
       }
+      if (user) { pruefeGedanke(); }
     });
 
     // ---------- Identität (wie in der alten App: ?user=leon / ?user=lotta + localStorage) ----------
@@ -417,6 +428,43 @@
     document.getElementById('brief-eingabe').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') sendeBrief();
     });
+
+    // ---------- Ich denk an dich ----------
+    var letzteGesehenGedankeZeit = 0;
+
+    async function sendeGedanke() {
+      var partnerName = meinUser === 'leon' ? 'Lotta' : 'Leon';
+      await setDoc(doc(db, 'einstellungen', 'letzterGedanke'), { von: meinUser, zeit: Date.now() });
+
+      var zaehlerRef = doc(db, 'einstellungen', 'gedankeAnzahl_' + meinUser);
+      var zaehlerSnap = await getDoc(zaehlerRef);
+      var bisher = zaehlerSnap.exists() ? (zaehlerSnap.data().anzahl || 0) : 0;
+      await setDoc(zaehlerRef, { anzahl: bisher + 1 });
+
+      zeigeGedankeToast('❤️ Gesendet an ' + partnerName + '!');
+    }
+
+    function zeigeGedankeToast(text) {
+      var toast = document.getElementById('gedanke-toast');
+      toast.innerText = text;
+      toast.classList.remove('hidden');
+      setTimeout(function () { toast.classList.add('hidden'); }, 4000);
+    }
+
+    async function pruefeGedanke() {
+      if (!istAngemeldet) return;
+      var snap = await getDoc(doc(db, 'einstellungen', 'letzterGedanke'));
+      if (!snap.exists()) return;
+      var d = snap.data();
+      if (d.von !== meinUser && d.zeit > letzteGesehenGedankeZeit) {
+        var partnerName = meinUser === 'leon' ? 'Lotta' : 'Leon';
+        zeigeGedankeToast('❤️ ' + partnerName + ' denkt gerade an dich');
+      }
+      letzteGesehenGedankeZeit = Math.max(letzteGesehenGedankeZeit, d.zeit);
+    }
+
+    document.getElementById('gedanke-button').addEventListener('click', sendeGedanke);
+    setInterval(pruefeGedanke, 30000);
 
     // ---------- Navigation ----------
     function zeigeScreen(name) {
