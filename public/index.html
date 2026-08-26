@@ -5,30 +5,234 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wieder in Osnabrück</title>
   <style>
+    :root {
+      --bg-start: #c9e4cd; --bg-end: #eef7ef;
+      --text: #2d4a35; --accent-bg: #2d4a35;
+      --card: rgba(255,255,255,0.85); --card-strong: rgba(255,255,255,0.92);
+      --shadow-soft: rgba(45,74,53,0.2);
+    }
+    body.dark {
+      --bg-start: #16261b; --bg-end: #0a120c;
+      --text: #d7ead9; --accent-bg: #3f6b4c;
+      --card: rgba(25,42,30,0.75); --card-strong: rgba(25,42,30,0.85);
+      --shadow-soft: rgba(0,0,0,0.4);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
     body {
-      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
+      color: var(--text);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #c9e4cd, #eef7ef);
-      color: #2d4a35;
       text-align: center;
+      padding-bottom: 90px;
+      transition: background 0.3s ease;
     }
     .box {
-      background: rgba(255,255,255,0.85);
-      padding: 30px 40px;
-      border-radius: 16px;
+      background: var(--card);
+      padding: 24px 30px;
+      border-radius: 18px;
+      max-width: 90vw;
+      width: 380px;
+      box-shadow: 0 4px 16px var(--shadow-soft);
     }
+    h1 { font-size: 3em; margin: 0 0 4px 0; }
+    .fortschritt-container {
+      background: rgba(150,150,150,0.3);
+      border-radius: 10px;
+      height: 14px;
+      margin: 16px 0 6px 0;
+      overflow: hidden;
+    }
+    .fortschritt-bar {
+      background: var(--accent-bg);
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+    .fortschritt-text { font-size: 0.85em; opacity: 0.8; margin: 0 0 14px 0; }
+    .spruch { font-style: italic; margin: 10px 0; }
+    .ferien { font-size: 0.9em; opacity: 0.85; }
+
+    #modus-button {
+      position: fixed; top: 14px; right: 14px;
+      background: var(--card-strong); border-radius: 50%;
+      width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.2em; box-shadow: 0 2px 8px var(--shadow-soft);
+    }
+
+    #bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--card-strong);
+      display: flex; justify-content: space-around; padding: 10px 0;
+      box-shadow: 0 -2px 10px var(--shadow-soft);
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      cursor: pointer; font-size: 0.75em; color: var(--text);
+      padding: 6px 16px; border-radius: 12px;
+    }
+    .nav-item.aktiv { background: rgba(150,150,150,0.2); font-weight: bold; }
+    .nav-item .icon { font-size: 1.5em; }
+
+    .screen.hidden { display: none; }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>🎉 Firebase-Testseite läuft!</h1>
-    <p>Wenn du das hier siehst, funktioniert die automatische Bereitstellung über GitHub → Firebase.</p>
+
+  <div id="modus-button">🖥️</div>
+
+  <div id="screen-countdown" class="screen">
+    <div class="box">
+      <h1 id="countdown-zahl">-</h1>
+      <p>Tage bis wir wieder zusammen sind ❤️</p>
+      <p id="countdown-wochen"></p>
+      <div class="fortschritt-container"><div class="fortschritt-bar" id="fortschritt-bar"></div></div>
+      <p class="fortschritt-text" id="fortschritt-text"></p>
+      <p class="spruch" id="spruch-text"></p>
+      <p class="ferien" id="ferien-text"></p>
+    </div>
   </div>
+
+  <div id="screen-abstimmung" class="screen hidden">
+    <div class="box"><p>🗳️ Abstimmung folgt im nächsten Schritt</p></div>
+  </div>
+
+  <div id="screen-briefe" class="screen hidden">
+    <div class="box"><p>💌 Chat folgt im nächsten Schritt</p></div>
+  </div>
+
+  <div id="bottom-nav">
+    <div class="nav-item aktiv" id="nav-countdown"><span class="icon">📅</span>Countdown</div>
+    <div class="nav-item" id="nav-abstimmung"><span class="icon">🗳️</span>Frage</div>
+    <div class="nav-item" id="nav-briefe"><span class="icon">💌</span>Chat</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      projectId: "osnacountdown"
+      // Weitere Config-Werte (apiKey, appId etc.) werden im nächsten Schritt ergänzt,
+      // sobald die Abstimmung/Chat wirklich mit der Datenbank sprechen.
+    };
+    // Firebase wird hier initialisiert, sobald die vollständige Config da ist.
+
+    // ---------- Sprüche & Ferien ----------
+    var SPRUECHE = ["Jeder Tag weniger ist ein Tag näher an dir.","Distanz ist nur eine Zahl, kein Gefühl.","So weit weg und trotzdem jeden Tag bei dir.","Bald ist wieder jeder Tag ein gemeinsamer.","Manchmal ist warten der Beweis, wie sehr man will.","Du fehlst mir heute genauso wie gestern.","Ein Countdown für das Beste, was mir passiert ist.","Noch ein paar Monate, dann für immer wieder zu zweit.","Ich freu mich schon auf ganz normale, langweilige Tage mit dir.","Die Zeit vergeht, aber wir bleiben.","Ein Anruf ersetzt keine Umarmung, aber er hilft.","Zuhause ist kein Ort, sondern da, wo du bist.","Wir schaffen das, wie wir schon so vieles geschafft haben.","Warten fühlt sich leichter an, wenn man weiß, worauf.","6,5 Jahre und immer noch freu ich mich auf jedes Wiedersehen.","Bald sind wir wieder das Team, das keine Ausrede mehr braucht.","Ich vermisse die kleinen Dinge am meisten.","Ein Tag weniger warten, ein Tag näher am Alltag zu zweit.","Manche Dinge sind die Wartezeit wert, und du bist eines davon.","Noch etwas Geduld, dann ist die Ferne wieder Geschichte.","Ich zähl nicht die Tage, ich zähl auf uns.","Bald keine Videoanrufe mehr, sondern echte Umarmungen.","Was schwer ist, macht das Ankommen später umso schöner.","Ich freu mich auf ganz normale Abende mit dir, ohne Abschied danach.","Wir haben schon so viel gemeistert – das hier auch.","Du bist die Person, für die sich Warten lohnt.","Bald ist Osnabrück wieder komplett.","Der Weg zum Scheitern beginnt mit dem ersten Schritt.","Ich hab kein Problem mit Montagen, ich hab ein Problem mit jedem Tag danach auch.","Wer wagt, verliert meistens auch.","Kreativität ist, wenn Chaos einen guten Tag hat.","Winke winke macht Leon's Fuß.","Wie viele gibt's?","Meine Schatzigkeit in Personigkeit.","Das überrascht mich jetzt.","Da kann ich mir nur an den Fass Kopf.","Da sieht man einfach die hat echt Grips."];
+    var FERIEN = [
+      { name: "Herbstferien", start: "2026-10-12" },
+      { name: "Weihnachtsferien", start: "2026-12-23" },
+      { name: "Halbjahresferien", start: "2027-02-01" },
+      { name: "Osterferien", start: "2027-03-22" },
+      { name: "Pfingstferien", start: "2027-05-14" },
+      { name: "Sommerferien", start: "2027-06-21" },
+      { name: "Herbstferien", start: "2027-10-04" }
+    ];
+
+    var ZIEL_DATUM = new Date("2027-07-08T00:00:00");
+    var START_DATUM = new Date("2026-02-01T00:00:00");
+
+    function heutigesDatumSchluessel() {
+      var teile = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(new Date());
+      var get = t => teile.find(p => p.type === t).value;
+      return get('year') + '-' + get('month') + '-' + get('day');
+    }
+    function getTagIndex() {
+      var heute = heutigesDatumSchluessel();
+      var [j, m, t] = heute.split('-').map(Number);
+      var jahresanfang = Date.UTC(j, 0, 1);
+      var heuteUtc = Date.UTC(j, m - 1, t);
+      var tagImJahr = Math.floor((heuteUtc - jahresanfang) / 86400000) + 1;
+      return j * 1000 + tagImJahr;
+    }
+
+    function renderCountdown() {
+      var heute = new Date();
+      var diffMs = ZIEL_DATUM - heute;
+      var tage = Math.max(0, Math.ceil(diffMs / 86400000));
+      document.getElementById('countdown-zahl').innerText = tage;
+
+      var wochen = Math.round(tage / 7);
+      var monate = Math.round(tage / 30.44);
+      document.getElementById('countdown-wochen').innerText = 'ca. ' + wochen + ' Wochen / ' + monate + ' Monate';
+
+      var gesamtMs = ZIEL_DATUM - START_DATUM;
+      var vergangenMs = heute - START_DATUM;
+      var prozent = Math.min(100, Math.max(0, Math.round((vergangenMs / gesamtMs) * 100)));
+      document.getElementById('fortschritt-bar').style.width = prozent + '%';
+      document.getElementById('fortschritt-text').innerText = prozent + '% der Wartezeit geschafft';
+
+      var tagIndex = getTagIndex();
+      document.getElementById('spruch-text').innerText = SPRUECHE[tagIndex % SPRUECHE.length];
+
+      renderFerien();
+    }
+
+    function renderFerien() {
+      var heute = heutigesDatumSchluessel();
+      var kommende = FERIEN.filter(f => f.start >= heute).sort((a,b) => a.start.localeCompare(b.start));
+      if (kommende.length === 0) {
+        document.getElementById('ferien-text').innerText = '';
+        return;
+      }
+      var naechste = kommende[0];
+      var startDatum = new Date(naechste.start + 'T00:00:00');
+
+      // Beginnen die Ferien an einem Montag, ab Freitag davor zählen (Wochenende ist eh frei)
+      if (startDatum.getDay() === 1) {
+        startDatum.setDate(startDatum.getDate() - 3);
+      }
+
+      var diffTage = Math.ceil((startDatum - new Date()) / 86400000);
+      var anzeigeDatum = naechste.start.split('-').reverse().join('.');
+
+      if (diffTage > 0) {
+        document.getElementById('ferien-text').innerText = '🎒 Noch ' + diffTage + ' Tage bis ' + naechste.name + ' (ab ' + anzeigeDatum + ')';
+      } else {
+        document.getElementById('ferien-text').innerText = '🎒 ' + naechste.name + ' haben begonnen!';
+      }
+    }
+
+    // ---------- Navigation ----------
+    function zeigeScreen(name) {
+      ['countdown', 'abstimmung', 'briefe'].forEach(function (n) {
+        document.getElementById('screen-' + n).classList.toggle('hidden', n !== name);
+        document.getElementById('nav-' + n).classList.toggle('aktiv', n === name);
+      });
+    }
+    document.getElementById('nav-countdown').addEventListener('click', () => zeigeScreen('countdown'));
+    document.getElementById('nav-abstimmung').addEventListener('click', () => zeigeScreen('abstimmung'));
+    document.getElementById('nav-briefe').addEventListener('click', () => zeigeScreen('briefe'));
+
+    // ---------- Dark/Light/System-Modus ----------
+    var farbModi = ['system', 'light', 'dark'];
+    var aktuellerModus = localStorage.getItem('farbmodus') || 'system';
+
+    function wendeFarbmodusAn() {
+      var istDunkel = aktuellerModus === 'dark' ||
+        (aktuellerModus === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.body.classList.toggle('dark', istDunkel);
+      var icons = { system: '🖥️', light: '☀️', dark: '🌙' };
+      document.getElementById('modus-button').innerText = icons[aktuellerModus];
+    }
+    document.getElementById('modus-button').addEventListener('click', function () {
+      var index = farbModi.indexOf(aktuellerModus);
+      aktuellerModus = farbModi[(index + 1) % farbModi.length];
+      localStorage.setItem('farbmodus', aktuellerModus);
+      wendeFarbmodusAn();
+    });
+
+    // ---------- Start ----------
+    wendeFarbmodusAn();
+    renderCountdown();
+    setInterval(renderCountdown, 60000); // jede Minute neu berechnen
+  </script>
 </body>
 </html>
-<!-- Test-Kommentar zum Auslösen der Bereitstellung -->
-<!-- Testversuch Wed Aug 26 17:58:50 UTC 2026 -->
