@@ -1,0 +1,23 @@
+name: Zu Firebase Hosting bereitstellen
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Firebase-Zugangsschlüssel schreiben
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/firebase-key.json
+
+      - name: Firebase CLI installieren
+        run: npm install -g firebase-tools
+
+      - name: Bereitstellen
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
+        run: firebase deploy --only hosting --project osnacountdown --non-interactive
