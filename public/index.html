@@ -985,6 +985,12 @@
     pruefeJahreszeitenDeko();
     ladeFotoDesTages();
 
+    // Erzwingt, dass der Browser die Position der fest positionierten Elemente
+    // (Kopfzeile, untere Leiste) sofort korrekt neu berechnet, statt erst nach
+    // einem manuellen Scrollen durch den Nutzer.
+    window.scrollTo(0, 1);
+    setTimeout(function () { window.scrollTo(0, 0); }, 50);
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js').catch(function (e) {
         console.error('Service Worker Registrierung fehlgeschlagen:', e);
