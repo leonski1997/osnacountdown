@@ -18,6 +18,14 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Bereitstellen
+        id: deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
-        run: firebase deploy --only hosting,firestore:rules --project osnacountdown --non-interactive
+        run: firebase deploy --only hosting,firestore:rules --project osnacountdown --non-interactive 2>&1 | tee /tmp/deploy-log.txt
+
+      - name: Protokoll sichern (nur falls nötig zum Nachschauen)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-log
+          path: /tmp/deploy-log.txt
