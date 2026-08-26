@@ -183,6 +183,7 @@
 
   <div id="screen-countdown" class="screen">
     <div class="box">
+      <p id="online-status" class="hidden" style="color:#4caf50; font-weight:bold; margin-bottom:8px;">🟢 ist gerade auch da</p>
       <h1 id="countdown-zahl">-</h1>
       <p>Tage bis wir wieder zusammen sind ❤️</p>
       <p id="countdown-wochen"></p>
@@ -272,6 +273,8 @@
       localStorage.setItem('meinUser', user);
       zeigeAppNachIdentitaet();
       pruefeGedanke();
+      sendeHerzschlag();
+      pruefeOnlineStatus();
     }
 
     function zeigeAppNachIdentitaet() {
@@ -547,6 +550,14 @@
       renderAbstimmung(frage, meineStimme, partnerStimme, partnerName, streak, heute);
     }
 
+    var letztGefeierterStreak = null;
+    var STREAK_MEILENSTEINE = [7, 14, 30, 50, 100, 200, 365];
+
+    function zeigeFeuerFunken() {
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+      zeigeAufsteigendePartikel(['#ff6b35', '#f7931e', '#ffd700', '#ff4500'], 22);
+    }
+
     function renderAbstimmung(frage, meineStimme, partnerStimme, partnerName, streak, heute) {
       var container = document.getElementById('abstimmung-inhalt');
       var html = '';
@@ -555,6 +566,11 @@
         var anzeige = getFlammenAnzeige(streak);
         html += '<p class="streak-flammen ' + anzeige.klasse + '">' + anzeige.flammen + '</p>';
         html += '<p class="streak-anzeige">' + streak + (streak === 1 ? ' Tag' : ' Tage') + ' in Folge</p>';
+
+        if (STREAK_MEILENSTEINE.indexOf(streak) !== -1 && letztGefeierterStreak !== streak) {
+          letztGefeierterStreak = streak;
+          zeigeFeuerFunken();
+        }
       }
 
       html += '<h2>' + frage + '</h2>';
@@ -787,6 +803,28 @@
 
     document.getElementById('gedanke-button').addEventListener('click', sendeGedanke);
     setInterval(pruefeGedanke, 30000);
+
+    // ---------- Online-Status ----------
+    async function sendeHerzschlag() {
+      if (!istAngemeldet || !meinUser) return;
+      await setDoc(doc(db, 'einstellungen', 'zuletztAktiv_' + meinUser), { zeit: Date.now() });
+    }
+
+    async function pruefeOnlineStatus() {
+      if (!istAngemeldet || !meinUser) return;
+      var partner = meinUser === 'leon' ? 'lotta' : 'leon';
+      var partnerName = meinUser === 'leon' ? 'Lotta' : 'Leon';
+      var snap = await getDoc(doc(db, 'einstellungen', 'zuletztAktiv_' + partner));
+      var anzeige = document.getElementById('online-status');
+      if (snap.exists() && (Date.now() - snap.data().zeit) < 60000) {
+        anzeige.innerText = '🟢 ' + partnerName + ' ist gerade auch da';
+        anzeige.classList.remove('hidden');
+      } else {
+        anzeige.classList.add('hidden');
+      }
+    }
+
+    setInterval(function () { sendeHerzschlag(); pruefeOnlineStatus(); }, 30000);
 
     // ---------- Navigation ----------
     function zeigeScreen(name) {
