@@ -17,6 +17,24 @@ jobs:
       - name: Firebase CLI installieren
         run: npm install -g firebase-tools
 
+      - name: Web-App-Zugangsdaten abrufen
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
+        run: |
+          firebase apps:sdkconfig WEB --project osnacountdown --json > /tmp/config-raw.json || echo "KEINE_APP"
+          node -e "
+            const fs = require('fs');
+            try {
+              const raw = JSON.parse(fs.readFileSync('/tmp/config-raw.json','utf8'));
+              const config = raw.result || raw;
+              fs.writeFileSync('public/firebase-config.js', 'window.__FIREBASE_CONFIG__ = ' + JSON.stringify(config) + ';');
+              console.log('Config-Datei geschrieben.');
+            } catch (e) {
+              console.log('Konnte Config nicht abrufen:', e.message);
+              fs.writeFileSync('public/firebase-config.js', 'window.__FIREBASE_CONFIG__ = { projectId: \"osnacountdown\" };');
+            }
+          "
+
       - name: Bereitstellen
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
