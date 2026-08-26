@@ -221,6 +221,14 @@
     </div>
   </div>
 
+  <div id="bestaetigung-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:4000;">
+    <div class="box">
+      <p>Willst du deine heutige Antwort wirklich zurücksetzen?</p>
+      <button class="frage-button" id="bestaetigung-ja-button">Ja, zurücksetzen</button>
+      <button class="frage-button" id="bestaetigung-nein-button" style="background:#888;">Abbrechen</button>
+    </div>
+  </div>
+
   <div id="screen-abstimmung" class="screen hidden">
     <div class="box">
       <div id="abstimmung-inhalt"><p>Lädt...</p></div>
@@ -245,7 +253,7 @@
     <div class="box" style="width: 90vw; max-width: 500px;">
       <div id="briefe-liste"></div>
       <div style="display:flex; gap:6px; margin-top:10px;">
-        <input type="text" id="brief-eingabe" placeholder="Nachricht schreiben..." style="flex:1; padding:10px; border-radius:10px; border:none;">
+        <input type="text" id="brief-eingabe" placeholder="Nachricht schreiben..." style="flex:1; padding:10px; border-radius:10px; border:none; background:var(--card-strong); color:var(--text); font-size:1em;">
         <button id="brief-senden-button" class="frage-button" style="width:auto; margin:0;">Senden</button>
       </div>
     </div>
@@ -261,7 +269,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
     const firebaseConfig = window.__FIREBASE_CONFIG__ || { projectId: "osnacountdown" };
     // window.__FIREBASE_CONFIG__ wird aus einer separaten Datei geladen (siehe unten im HTML),
@@ -614,12 +622,14 @@
       } else if (!partnerStimme) {
         html += '<p>Du hast abgestimmt: <b>' + meineStimme + '</b></p>';
         html += '<p>Warte noch auf ' + partnerName + 's Stimme...</p>';
+        html += '<a class="zurueck-link" id="reset-link" style="display:inline-block;">Zurücksetzen</a>';
       } else {
         var einig = meineStimme === partnerStimme;
         var meinName = meinUser === 'leon' ? 'Leon' : 'Lotta';
         html += '<p>' + meinName + ' hat abgestimmt für: <b>' + meineStimme + '</b></p>';
         html += '<p>' + partnerName + ' hat abgestimmt für: <b>' + partnerStimme + '</b></p>';
         html += '<p>' + (einig ? 'Ihr seid euch einig! 🎉' : 'Uneinigkeit 😄') + '</p>';
+        html += '<a class="zurueck-link" id="reset-link" style="display:inline-block;">Zurücksetzen</a>';
         if (einig && letztGefeierteFrage !== heute) {
           letztGefeierteFrage = heute;
           zeigeKonfetti();
@@ -627,6 +637,13 @@
       }
 
       container.innerHTML = html;
+
+      var resetLink = document.getElementById('reset-link');
+      if (resetLink) {
+        resetLink.addEventListener('click', function () {
+          document.getElementById('bestaetigung-overlay').classList.remove('hidden');
+        });
+      }
 
       container.querySelectorAll('.frage-button').forEach(function (btn) {
         btn.addEventListener('click', function () { sendeStimme(btn.dataset.wahl, heute); });
@@ -647,6 +664,19 @@
 
       ladeAbstimmung();
     }
+
+    document.getElementById('bestaetigung-nein-button').addEventListener('click', function () {
+      document.getElementById('bestaetigung-overlay').classList.add('hidden');
+    });
+    document.getElementById('bestaetigung-ja-button').addEventListener('click', async function () {
+      document.getElementById('bestaetigung-overlay').classList.add('hidden');
+      var heute = heutigesDatumSchluessel();
+      var docRef = doc(db, 'abstimmung', heute);
+      var feld = {};
+      feld[meinUser] = deleteField();
+      await updateDoc(docRef, feld);
+      ladeAbstimmung();
+    });
 
     // ---------- Historie ----------
     var MONATS_NAMEN = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
