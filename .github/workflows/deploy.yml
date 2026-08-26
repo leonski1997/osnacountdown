@@ -21,13 +21,19 @@ jobs:
         id: deploy-rules
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
-        run: firebase deploy --only firestore:rules --project osnacountdown --non-interactive 2>&1 | tee /tmp/rules-log.txt
+        shell: bash
+        run: |
+          set -o pipefail
+          firebase deploy --only firestore:rules --project osnacountdown --non-interactive 2>&1 | tee /tmp/rules-log.txt
 
       - name: Hosting bereitstellen
         id: deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
-        run: firebase deploy --only hosting --project osnacountdown --non-interactive 2>&1 | tee /tmp/deploy-log.txt
+        shell: bash
+        run: |
+          set -o pipefail
+          firebase deploy --only hosting --project osnacountdown --non-interactive 2>&1 | tee /tmp/deploy-log.txt
 
       - name: Protokoll auf Debug-Branch sichern (für Diagnose)
         if: always()
