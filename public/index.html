@@ -239,6 +239,7 @@
       meinUser = user;
       localStorage.setItem('meinUser', user);
       zeigeAppNachIdentitaet();
+      pruefeGedanke();
     }
 
     function zeigeAppNachIdentitaet() {
@@ -632,7 +633,7 @@
     }
 
     async function pruefeGedanke() {
-      if (!istAngemeldet) return;
+      if (!istAngemeldet || !meinUser) return;
       var snap = await getDoc(doc(db, 'einstellungen', 'letzterGedanke'));
       if (!snap.exists()) return;
       var d = snap.data();
