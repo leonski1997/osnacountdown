@@ -23,8 +23,12 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
         shell: bash
         run: |
-          set -o pipefail
-          firebase deploy --only firestore:rules --project osnacountdown --non-interactive 2>&1 | tee /tmp/rules-log.txt
+          firebase deploy --only firestore:rules --project osnacountdown --non-interactive > /tmp/rules-log.txt 2>&1
+          cat /tmp/rules-log.txt
+          if grep -q "Error:" /tmp/rules-log.txt; then
+            echo "Echter Fehler im Protokoll gefunden, breche ab."
+            exit 1
+          fi
 
       - name: Hosting bereitstellen
         id: deploy
