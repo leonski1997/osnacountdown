@@ -18,34 +18,11 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Firestore-Regeln bereitstellen
-        id: deploy-rules
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
-        shell: bash
-        run: |
-          firebase deploy --only firestore:rules --project osnacountdown --non-interactive > /tmp/rules-log.txt 2>&1
-          cat /tmp/rules-log.txt
-          if grep -q "Error:" /tmp/rules-log.txt; then
-            echo "Echter Fehler im Protokoll gefunden, breche ab."
-            exit 1
-          fi
+        run: firebase deploy --only firestore:rules --project osnacountdown --non-interactive
 
       - name: Hosting bereitstellen
-        id: deploy
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
-        shell: bash
-        run: |
-          set -o pipefail
-          firebase deploy --only hosting --project osnacountdown --non-interactive 2>&1 | tee /tmp/deploy-log.txt
-
-      - name: Protokoll auf Debug-Branch sichern (für Diagnose)
-        if: always()
-        run: |
-          git config user.email "debug@example.com"
-          git config user.name "Debug Bot"
-          git checkout -B debug-logs
-          cp /tmp/rules-log.txt rules-log.txt 2>/dev/null || echo "kein rules-log" > rules-log.txt
-          git add rules-log.txt
-          git commit -m "Debug-Protokoll" || echo "nichts zu committen"
-          git push origin debug-logs --force
+        run: firebase deploy --only hosting --project osnacountdown --non-interactive
