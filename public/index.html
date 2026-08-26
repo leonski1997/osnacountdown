@@ -118,6 +118,13 @@
     .streak-anzeige { font-weight: bold; margin: 0 0 12px 0; }
     .ergebnis-zeile { display: flex; justify-content: space-between; padding: 6px 0; }
     .zurueck-link { display: block; margin-top: 14px; font-size: 0.85em; opacity: 0.75; cursor: pointer; }
+    .nav { margin-top: 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .nav a {
+      display: inline-block; background: var(--card-strong); color: var(--text);
+      text-decoration: none; padding: 13px 30px; border-radius: 14px;
+      font-size: 1.05em; font-weight: bold; cursor: pointer;
+      box-shadow: 0 2px 8px var(--shadow-soft);
+    }
 
     .konfetti-teil {
       position: fixed; top: -20px; pointer-events: none; z-index: 3000;
@@ -232,8 +239,10 @@
   <div id="screen-abstimmung" class="screen hidden">
     <div class="box">
       <div id="abstimmung-inhalt"><p>Lädt...</p></div>
-      <a class="zurueck-link" id="link-historie">📜 Historie ansehen</a> &nbsp;|&nbsp;
-      <a class="zurueck-link" id="link-statistik" style="display:inline;">📊 Statistik ansehen</a>
+      <div class="nav">
+        <a id="link-historie">📜 Historie ansehen</a>
+        <a id="link-statistik">📊 Statistik ansehen</a>
+      </div>
     </div>
   </div>
 
@@ -622,14 +631,14 @@
       } else if (!partnerStimme) {
         html += '<p>Du hast abgestimmt: <b>' + meineStimme + '</b></p>';
         html += '<p>Warte noch auf ' + partnerName + 's Stimme...</p>';
-        html += '<a class="zurueck-link" id="reset-link" style="display:inline-block;">Zurücksetzen</a>';
+        html += '<div class="nav"><a id="reset-link">🔄 Antwort zurücksetzen</a></div>';
       } else {
         var einig = meineStimme === partnerStimme;
         var meinName = meinUser === 'leon' ? 'Leon' : 'Lotta';
         html += '<p>' + meinName + ' hat abgestimmt für: <b>' + meineStimme + '</b></p>';
         html += '<p>' + partnerName + ' hat abgestimmt für: <b>' + partnerStimme + '</b></p>';
         html += '<p>' + (einig ? 'Ihr seid euch einig! 🎉' : 'Uneinigkeit 😄') + '</p>';
-        html += '<a class="zurueck-link" id="reset-link" style="display:inline-block;">Zurücksetzen</a>';
+        html += '<div class="nav"><a id="reset-link">🔄 Antwort zurücksetzen</a></div>';
         if (einig && letztGefeierteFrage !== heute) {
           letztGefeierteFrage = heute;
           zeigeKonfetti();
