@@ -1,4 +1,5 @@
 const { onDocumentWritten, onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 
@@ -131,3 +132,88 @@ exports.beiNeuerNachrichtBenachrichtigen = onDocumentCreated("briefe/{briefId}",
 });
 
 
+
+
+// ============================================================================
+// EINMALIGE MIGRATION: alte Apps-Script-Daten (Abstimmungen, Chat, Denk-an-dich)
+// nach Firestore übertragen. Überschreibt NIEMALS bereits vorhandene Werte,
+// füllt nur Lücken auf bzw. addiert Zähler. Kann nach dem Umzug wieder
+// entfernt werden (Datei diesen Abschnitt löschen + neu deployen).
+// ============================================================================
+const ALTE_DATEN = {
+  "abstimmungen": {"2026-08-23":{"frage":"Wer räumt zuerst den Geschirrspüler ein?","leon":"Lotta","lotta":"Leon"},"2026-08-22":{"frage":"Wer trödelt öfter beim Rausgehen?","leon":"Lotta","lotta":"Lotta"},"2026-08-21":{"frage":"Wer kann besser mit Kritik umgehen?","leon":"Lotta","lotta":"Leon"},"2026-08-20":{"frage":"Wer isst öfter zu spät?","leon":"Lotta","lotta":"Lotta"},"2026-08-27":{"frage":"Wer würde eher ein Haustier anschaffen, ohne zu fragen?","leon":"Lotta","lotta":"Lotta"},"2026-08-26":{"frage":"Wer schaut öfter Serien ohne den anderen weiter?","leon":"Lotta","lotta":"Lotta"},"2026-08-25":{"frage":"Wer bringt öfter Süßigkeiten mit?","leon":"Lotta","lotta":"Lotta"},"2026-08-24":{"frage":"Wer hat mehr offene Browser-Tabs?","leon":"Leon","lotta":"Leon"},"2026-08-12":{"frage":"Wer würde eher spontan verreisen?","leon":"Lotta","lotta":"Lotta"},"2026-08-11":{"frage":"Wer kann Ikea-Möbel besser aufbauen?","leon":"Lotta","lotta":"Lotta"},"2026-08-10":{"frage":"Wer ist der bessere Multitasker?","leon":"Leon","lotta":"Leon"},"2026-08-16":{"frage":"Wer ist der bessere Planer?","leon":"Leon","lotta":"Lotta"},"2026-08-15":{"frage":"Wer trinkt mehr Kaffee?","leon":"Leon","lotta":"Leon"},"2026-08-14":{"frage":"Wer verlegt öfter den Schlüssel?","leon":"Leon","lotta":"Lotta"},"2026-08-13":{"frage":"Wer hat mehr Geduld im Stau?","leon":"Lotta","lotta":"Lotta"},"2026-08-19":{"frage":"Wer hat den volleren Terminkalender?","leon":"Leon","lotta":"Lotta"},"2026-08-18":{"frage":"Wer kann besser Wegbeschreibungen erklären?","leon":"Lotta","lotta":"Lotta"},"2026-08-17":{"frage":"Wer telefoniert lieber statt zu schreiben?","leon":"Leon","lotta":"Leon"}},
+  "briefe": {"brief_20260818065414_933":{"von":"Lotta","text":"Du hast ja noch mehr verändert 🥰","datum":"18.08.2026","uhrzeit":"06:54"},"brief_20260819072653_96":{"von":"Leon","text":"Hab immer Lust noch mehr coole Sachen zu bauen🥰","datum":"19.08.2026","uhrzeit":"07:26"},"brief_20260814144602_551":{"von":"Leon","text":"Jaaa, aber ich such auch immer wie blöde meine Sachen, so wie mein Brillenetui immer haha","datum":"14.08.2026","uhrzeit":"14:46"},"brief_20260811181311_183":{"von":"Lotta","text":"Hallo mein zauberhafter Kacki <3","datum":"11.08.2026","uhrzeit":"18:13"},"brief_20260813073522_335":{"von":"Leon","text":"Einfach ein legendärer Song von dir🥰","datum":"13.08.2026","uhrzeit":"07:35"},"brief_20260811153426_624":{"von":"Leon","text":"Hallo Kacki <3","datum":"11.08.2026","uhrzeit":"15:34"},"brief_20260812085921_305":{"von":"Lotta","text":"Das ist richtig schön jeden Morgen ❤️","datum":"12.08.2026","uhrzeit":"08:59"},"brief_20260812090620_882":{"von":"Leon","text":"Ich mag das auch sehr❤️","datum":"12.08.2026","uhrzeit":"09:06"},"brief_20260820072430_766":{"von":"Lotta","text":"Gut dann haben wir es ja gleich verstanden 😂","datum":"20.08.2026","uhrzeit":"07:24"},"brief_20260812081303_856":{"von":"Leon","text":"Guten Morgen Schatz❤️","datum":"12.08.2026","uhrzeit":"08:13"},"brief_20260820071911_803":{"von":"Leon","text":"Die Frage ergibt keinen Sinn, ich glaube er meint ist😂","datum":"20.08.2026","uhrzeit":"07:19"},"brief_20260819072524_377":{"von":"Lotta","text":"Aww ist das toll! 🥰","datum":"19.08.2026","uhrzeit":"07:25"},"brief_20260820065250_147":{"von":"Lotta","text":"Die Frage checke ich nicht ganz 😂 isst oder ist?","datum":"20.08.2026","uhrzeit":"06:52"},"brief_20260813065328_323":{"von":"Lotta","text":"Winke winke macht leons Fuß❤️","datum":"13.08.2026","uhrzeit":"06:53"},"brief_20260814103535_535":{"von":"Lotta","text":"Ohhh das erste Mal nicht einig. Du passt doch immer so gut auf deinen Schlüssel auf 😂","datum":"14.08.2026","uhrzeit":"10:35"},"brief_20260814161810_425":{"von":"Lotta","text":"Jaa das stimmt 😂😂","datum":"14.08.2026","uhrzeit":"16:18"},"brief_20260818080345_901":{"von":"Leon","text":"Ja ich hatte lust noch ein paar Kleinigkeiten einzubauen🥰","datum":"18.08.2026","uhrzeit":"08:03"}},
+  "gedankeLeon": 6,
+  "gedankeLotta": 7
+};
+
+exports.migriereAlteDaten = onRequest(async (req, res) => {
+  const SCHLUESSEL = "osna-migration-2026";
+  if (req.query.schluessel !== SCHLUESSEL) {
+    res.status(403).send("Falscher oder fehlender Schlüssel.");
+    return;
+  }
+
+  const statusRef = db.collection("migration").doc("status");
+  const statusSnap = await statusRef.get();
+  if (statusSnap.exists && statusSnap.data().erledigt) {
+    res.status(200).send(
+      "Migration wurde bereits am " + statusSnap.data().zeitpunkt +
+      " durchgeführt. Es wurde nichts verändert (Sicherheitsschutz gegen Doppelausführung)."
+    );
+    return;
+  }
+
+  var abstimmungNeu = 0;
+  var abstimmungErgaenzt = 0;
+
+  for (const [datum, eintrag] of Object.entries(ALTE_DATEN.abstimmungen)) {
+    const ref = db.collection("abstimmung").doc(datum);
+    const snap = await ref.get();
+    const bestehend = snap.exists ? snap.data() : {};
+    const merged = {
+      frage: bestehend.frage || eintrag.frage,
+      leon: bestehend.leon || eintrag.leon,
+      lotta: bestehend.lotta || eintrag.lotta
+    };
+    await ref.set(merged, { merge: true });
+    if (snap.exists) { abstimmungErgaenzt++; } else { abstimmungNeu++; }
+  }
+
+  var briefeImportiert = 0;
+  for (const [key, eintrag] of Object.entries(ALTE_DATEN.briefe)) {
+    const zeitTeil = key.split("_")[1]; // Format: yyyyMMddHHmmss
+    const jahr = Number(zeitTeil.substring(0, 4));
+    const monat = Number(zeitTeil.substring(4, 6));
+    const tag = Number(zeitTeil.substring(6, 8));
+    const stunde = Number(zeitTeil.substring(8, 10));
+    const minute = Number(zeitTeil.substring(10, 12));
+    const sekunde = Number(zeitTeil.substring(12, 14));
+    // Europe/Berlin ist im August Sommerzeit (UTC+2) - alle Daten liegen im August.
+    const zeitstempel = Date.UTC(jahr, monat - 1, tag, stunde - 2, minute, sekunde);
+
+    const neuerRef = db.collection("briefe").doc("migriert_" + key);
+    await neuerRef.set({
+      von: eintrag.von === "Leon" ? "leon" : "lotta",
+      text: eintrag.text,
+      zeitstempel: zeitstempel
+    }, { merge: true });
+    briefeImportiert++;
+  }
+
+  // Additiv erhöhen statt überschreiben, damit Klicks aus der Testphase der neuen App erhalten bleiben.
+  const gLeonRef = db.collection("einstellungen").doc("gedankeAnzahl_leon");
+  const gLottaRef = db.collection("einstellungen").doc("gedankeAnzahl_lotta");
+  await gLeonRef.set({ anzahl: admin.firestore.FieldValue.increment(ALTE_DATEN.gedankeLeon) }, { merge: true });
+  await gLottaRef.set({ anzahl: admin.firestore.FieldValue.increment(ALTE_DATEN.gedankeLotta) }, { merge: true });
+
+  await statusRef.set({ erledigt: true, zeitpunkt: new Date().toISOString() });
+
+  res.status(200).send(
+    "Migration abgeschlossen!\n\n" +
+    "Abstimmungstage neu angelegt: " + abstimmungNeu + "\n" +
+    "Abstimmungstage ergänzt (Tag existierte schon): " + abstimmungErgaenzt + "\n" +
+    "Brief-Fach-Nachrichten importiert: " + briefeImportiert + "\n" +
+    "Denk-an-dich-Zähler erhöht: +" + ALTE_DATEN.gedankeLeon + " (Leon), +" + ALTE_DATEN.gedankeLotta + " (Lotta)"
+  );
+});
