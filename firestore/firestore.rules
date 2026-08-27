@@ -1,11 +1,45 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Nur "eingeloggte" (auch anonym) Nutzer dürfen lesen/schreiben -
-    // schützt vor wildfremden Bots im Internet, ohne dass sich Leon/Lotta
-    // aktiv irgendwo anmelden müssen.
-    match /{document=**} {
+
+    // Abstimmung: Datum als Dokument-ID, nur bekannte Felder mit gültigen Werten
+    match /abstimmung/{datum} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.data.keys().hasOnly(['frage', 'leon', 'lotta'])
+        && (!('frage' in request.resource.data) || request.resource.data.frage is string)
+        && (!('leon' in request.resource.data) || request.resource.data.leon in ['Leon', 'Lotta'])
+        && (!('lotta' in request.resource.data) || request.resource.data.lotta in ['Leon', 'Lotta']);
+    }
+
+    // Brief-Fach: nur "leon"/"lotta" als Absender, Text begrenzt auf 2000 Zeichen,
+    // bestehende Nachrichten können nicht nachträglich verändert werden (nur gelöscht).
+    match /briefe/{briefId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.von in ['leon', 'lotta']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 2000
+        && request.resource.data.zeitstempel is int;
+      allow delete: if request.auth != null;
+      allow update: if false;
+    }
+
+    // Einstellungen (Denk-an-dich-Zähler, letzter Gedanke usw.)
+    match /einstellungen/{dokId} {
       allow read, write: if request.auth != null;
+    }
+
+    // Push-Benachrichtigungs-Tokens
+    match /push_tokens/{user} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Migrations-Status: nur lesbar, Schreiben nur über die Cloud Function
+    // (die läuft mit Admin-Rechten und umgeht diese Regeln ohnehin).
+    match /migration/{dokId} {
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }
