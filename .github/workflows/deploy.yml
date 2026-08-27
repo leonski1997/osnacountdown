@@ -17,12 +17,21 @@ jobs:
       - name: Firebase CLI installieren
         run: npm install -g firebase-tools
 
+      - name: Functions-Abhängigkeiten installieren
+        run: npm install --prefix functions
+
       - name: Firestore-Regeln bereitstellen
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
         run: firebase deploy --only firestore:rules --project osnacountdown --non-interactive
 
+      - name: Functions bereitstellen
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
+        run: firebase deploy --only functions --project osnacountdown --non-interactive
+
       - name: Hosting bereitstellen
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
         run: firebase deploy --only hosting --project osnacountdown --non-interactive
+
