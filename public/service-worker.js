@@ -1,5 +1,11 @@
 // Minimaler Service Worker - macht die Seite als "echte" App installierbar,
 // und empfängt zusätzlich Push-Benachrichtigungen im Hintergrund (FCM).
+//
+// WICHTIG: Wir rufen hier absichtlich KEIN eigenes showNotification() auf.
+// Da die Cloud Function ein "notification"-Feld mitschickt, zeigt der
+// Browser die Benachrichtigung automatisch selbst an. Ein zusätzlicher
+// eigener Anzeige-Aufruf hat vorher zu doppelten/leeren Benachrichtigungen
+// geführt - daher lassen wir das dem Browser komplett allein überlassen.
 
 importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-compat.js');
@@ -13,18 +19,7 @@ firebase.initializeApp({
   appId: "1:643165169880:web:f4c5c3173a01fc75f50fad"
 });
 
-var messaging = firebase.messaging();
-
-messaging.onBackgroundMessage(function (payload) {
-  var daten = payload.data || {};
-  var titel = daten.titel || 'Wieder in Osnabrück';
-  var optionen = {
-    body: daten.body || '',
-    icon: '/icon.svg',
-    data: daten
-  };
-  self.registration.showNotification(titel, optionen);
-});
+firebase.messaging();
 
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
@@ -41,4 +36,3 @@ self.addEventListener('fetch', function (e) {
   // Einfach normal durchreichen - keine echte Offline-Funktion nötig für den Anfang.
   e.respondWith(fetch(e.request));
 });
-
