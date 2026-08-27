@@ -243,6 +243,8 @@
     <a id="ausloggen-link" href="#">Ausloggen</a>
   </div>
 
+  <div id="testdatum-banner" class="hidden" style="position:fixed; top:14px; right:14px; z-index:5000; background:#b71c1c; color:#fff; padding:6px 12px; border-radius:8px; font-size:0.85em; font-weight:bold;">🧪 Test-Datum aktiv</div>
+
   <div id="screen-identitaet" class="screen hidden">
     <div class="box">
       <h2>Wer bist du?</h2>
@@ -418,8 +420,22 @@
     var ZIEL_DATUM = new Date("2027-07-08T00:00:00");
     var START_DATUM = new Date("2026-02-01T00:00:00");
 
+    // Test-Modus: mit ?testdatum=YYYY-MM-DD in der URL kann ein beliebiges Datum
+    // simuliert werden, um Spezialtage (Valentinstag, Weihnachten, Jahrestag, ...) zu
+    // testen, ohne echte Daten zu verändern. Wirkt nur auf die Anzeige.
+    var TEST_DATUM = (function () {
+      var p = new URLSearchParams(window.location.search).get('testdatum');
+      if (!p) return null;
+      var d = new Date(p + 'T12:00:00');
+      return isNaN(d.getTime()) ? null : d;
+    })();
+
+    function jetzt() {
+      return TEST_DATUM ? new Date(TEST_DATUM.getTime()) : new Date();
+    }
+
     function heutigesDatumSchluessel() {
-      var teile = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(new Date());
+      var teile = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(jetzt());
       var get = t => teile.find(p => p.type === t).value;
       return get('year') + '-' + get('month') + '-' + get('day');
     }
@@ -488,6 +504,13 @@
       easterEggGewuerfelt = true;
 
       var heute = heutigesDatumSchluessel();
+
+      // Im Test-Modus (?testdatum=...) immer anzeigen, um es bequem ausprobieren zu können
+      if (TEST_DATUM) {
+        document.getElementById('geschenk-icon').classList.remove('hidden');
+        return;
+      }
+
       if (localStorage.getItem('geschenkGesehen_' + heute)) return;
 
       var seed = 0;
@@ -599,7 +622,7 @@
       text.classList.add('hidden');
       text.innerText = '';
 
-      var heute = new Date();
+      var heute = jetzt();
       var tagMonat = heutigesDatumSchluessel().substring(5);
       var wochentag = heute.getDay();
 
@@ -634,7 +657,7 @@
       if (Math.random() >= (1 / 5)) return;
       letzteJahreszeitenDekoBesuch = true;
 
-      var monat = new Date().getMonth() + 1;
+      var monat = jetzt().getMonth() + 1;
       if (monat === 3 || monat === 4 || monat === 5) zeigeFallendePartikel(['#ffb6c1', '#ffe0ec', '#ffffff']);
       else if (monat === 6 || monat === 7 || monat === 8) zeigeFallendePartikel(['#ffd700', '#ffec8b', '#fff5b8']);
       else if (monat === 9 || monat === 10 || monat === 11) zeigeFallendePartikel(['#e67e22', '#c0392b', '#a0522d']);
@@ -712,7 +735,7 @@
     }
 
     function renderCountdown() {
-      var heute = new Date();
+      var heute = jetzt();
       var diffMs = ZIEL_DATUM - heute;
       var tage = Math.max(0, Math.ceil(diffMs / 86400000));
       document.getElementById('countdown-zahl').innerText = tage;
@@ -749,7 +772,7 @@
         startDatum.setDate(startDatum.getDate() - 3);
       }
 
-      var diffTage = Math.ceil((startDatum - new Date()) / 86400000);
+      var diffTage = Math.ceil((startDatum - jetzt()) / 86400000);
       var anzeigeDatum = naechste.start.split('-').reverse().join('.');
 
       if (diffTage > 0) {
@@ -1150,6 +1173,12 @@
     renderCountdown();
     pruefeJahreszeitenDeko();
     ladeFotoDesTages();
+
+    if (TEST_DATUM) {
+      var testBanner = document.getElementById('testdatum-banner');
+      testBanner.innerText = '🧪 Test-Datum: ' + heutigesDatumSchluessel().split('-').reverse().join('.');
+      testBanner.classList.remove('hidden');
+    }
 
     window.scrollTo(0, 1);
     setTimeout(function () { window.scrollTo(0, 0); }, 50);
