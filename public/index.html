@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Wieder in Osnabrück</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -41,12 +41,12 @@
       flex-direction: column;
       justify-content: safe center;
       align-items: center;
-      padding: 80px 20px 90px 20px;
+      padding: 80px 20px 110px 20px;
       box-sizing: border-box;
     }
     #screen-countdown {
       justify-content: safe flex-end;
-      padding-bottom: 115px;
+      padding-bottom: 150px;
     }
     .box {
       background: var(--card);
@@ -108,7 +108,8 @@
     #bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: var(--card-strong);
-      display: flex; justify-content: space-around; padding: 10px 0;
+      display: flex; justify-content: space-around;
+      padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)) 0;
       box-shadow: 0 -2px 10px var(--shadow-soft);
     }
     .nav-item {
