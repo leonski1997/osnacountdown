@@ -384,9 +384,8 @@
         }
 
         onMessage(messaging, function (payload) {
-          var daten = payload.data || {};
-          var titel = daten.titel || 'Wieder in Osnabrück';
-          var body = daten.body || '';
+          var titel = (payload.notification && payload.notification.title) || 'Wieder in Osnabrück';
+          var body = (payload.notification && payload.notification.body) || '';
           zeigeGedankeToast('🔔 ' + titel + (body ? ': ' + body : ''));
         });
       } catch (e) {
@@ -1228,4 +1227,5 @@
   </script>
 </body>
 </html>
+
 
