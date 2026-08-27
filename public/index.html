@@ -203,6 +203,24 @@
       box-shadow: 0 4px 14px rgba(0,0,0,0.35); max-width: 85vw; text-align: center;
     }
     #gedanke-toast.hidden { display: none; }
+
+    #geschenk-icon {
+      position: fixed; bottom: 90px; right: 16px;
+      background: var(--accent-bg); color: white;
+      width: 46px; height: 46px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4em; cursor: pointer; z-index: 600;
+      box-shadow: 0 3px 10px var(--shadow-soft);
+      animation: geschenk-wackeln 1.8s ease-in-out infinite;
+    }
+    #geschenk-icon.hidden { display: none; }
+    @keyframes geschenk-wackeln { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+    #fakt-overlay.hidden { display: none; }
+    #fakt-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 4000;
+    }
+    .fakt-text { font-size: 1.05em; margin: 6px 0 18px 0; }
   </style>
 </head>
 <body>
@@ -282,6 +300,16 @@
     </div>
   </div>
 
+  <div id="geschenk-icon" class="hidden" title="Ein kleines Geschenk für dich...">🎁</div>
+
+  <div id="fakt-overlay" class="hidden">
+    <div class="box">
+      <p style="font-size:1.6em; margin:0 0 6px 0;">🎁</p>
+      <p class="fakt-text" id="fakt-text"></p>
+      <button class="frage-button" id="fakt-schliessen-button">Schließen</button>
+    </div>
+  </div>
+
   <div id="bottom-nav" style="position:fixed; bottom:0; left:0; right:0;">
     <div class="nav-item aktiv" id="nav-countdown"><span class="icon">📅</span>Countdown</div>
     <div class="nav-item" id="nav-abstimmung"><span class="icon">🗳️</span>Frage</div>
@@ -295,8 +323,6 @@
     import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
     const firebaseConfig = window.__FIREBASE_CONFIG__ || { projectId: "osnacountdown" };
-    // window.__FIREBASE_CONFIG__ wird aus einer separaten Datei geladen (siehe unten im HTML),
-    // damit die eigentlichen Zugangsdaten nicht mitten im Code stehen müssen.
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -309,7 +335,7 @@
       anmeldungFehlgeschlagen = true;
       var container = document.getElementById('abstimmung-inhalt');
       if (container) {
-        container.innerHTML = '<p>⚠️ Verbindung zur Datenbank fehlgeschlagen.<br>(' + e.code + ')</p>';
+        container.innerHTML = '⚠️ Verbindung zur Datenbank fehlgeschlagen.<br>(' + e.code + ')';
       }
     });
     onAuthStateChanged(auth, function (user) {
@@ -320,7 +346,6 @@
       if (user) { pruefeGedanke(); }
     });
 
-    // ---------- Identität (wie in der alten App: ?user=leon / ?user=lotta + localStorage) ----------
     var urlParams = new URLSearchParams(window.location.search);
     var meinUser = urlParams.get('user') || localStorage.getItem('meinUser') || null;
     if (urlParams.get('user')) { localStorage.setItem('meinUser', meinUser); }
@@ -352,6 +377,7 @@
       document.getElementById('user-name-label').innerText = meinUser === 'leon' ? 'Leon' : 'Lotta';
       if (nav) nav.classList.remove('hidden');
       zeigeScreen('countdown');
+      pruefeEasterEgg();
     }
 
     document.getElementById('identitaet-leon-button').addEventListener('click', () => setzeIdentitaet('leon'));
@@ -365,10 +391,8 @@
 
     zeigeAppNachIdentitaet();
 
-    // ---------- Fragen ----------
     var FRAGEN = ["Wer ist der bessere Koch?","Wer schläft länger aus?","Wer ist chaotischer?","Wer würde eine Zombie-Apokalypse länger überleben?","Wer guckt öfter aufs Handy?","Wer hat den besseren Musikgeschmack?","Wer verliert öfter Sachen?","Wer redet mehr am Telefon?","Wer kann besser einparken?","Wer isst schneller?","Wer ist morgens schlechter gelaunt?","Wer würde im Streit zuerst nachgeben?","Wer hat den schlechteren Orientierungssinn?","Wer räumt öfter auf?","Wer kann besser tanzen?","Wer würde im Urlaub eher was verlieren?","Wer ist der bessere Autofahrer?","Wer kann länger ohne Handy?","Wer motzt öfter rum?","Wer würde bei einem Quiz besser abschneiden?","Wer duscht länger?","Wer braucht länger, um sich fertig zu machen?","Wer vergisst öfter den Geburtstag von jemandem?","Wer hat mehr ungelesene Nachrichten?","Wer schnarcht lauter?","Wer klaut öfter die Bettdecke?","Wer ist der bessere Multitasker?","Wer kann Ikea-Möbel besser aufbauen?","Wer würde eher spontan verreisen?","Wer hat mehr Geduld im Stau?","Wer verlegt öfter den Schlüssel?","Wer trinkt mehr Kaffee?","Wer ist der bessere Planer?","Wer telefoniert lieber statt zu schreiben?","Wer kann besser Wegbeschreibungen erklären?","Wer hat den volleren Terminkalender?","Wer isst öfter zu spät?","Wer kann besser mit Kritik umgehen?","Wer trödelt öfter beim Rausgehen?","Wer räumt zuerst den Geschirrspüler ein?","Wer hat mehr offene Browser-Tabs?","Wer bringt öfter Süßigkeiten mit?","Wer schaut öfter Serien ohne den anderen weiter?","Wer würde eher ein Haustier anschaffen, ohne zu fragen?","Wer hat die schlechteren Ausreden?","Wer telefoniert länger mit der Familie?","Wer kann besser mit Werkzeug umgehen?","Wer bekommt öfter schlechte Laune wegen Hunger?","Wer checkt öfter das Handy beim Zähneputzen?","Wer hat mehr Klamotten im Schrank?","Wer würde sich eher ein Tattoo stechen lassen?","Wer hat als Erstes die Fernbedienung in der Hand?","Wer plant den nächsten Urlaub zuerst?","Wer kann besser kochen ohne Rezept?","Wer würde eher spontan die Haare umfärben?","Wer hat öfter Kopfschmerzen?","Wer ist geduldiger beim Warten in der Schlange?","Wer würde eher zu spät zu einem wichtigen Termin kommen?","Wer hat den chaotischeren Kofferraum?","Wer gibt öfter beim Sport auf?","Wer zeigt Gefühle offener?","Wer braucht mehr Zeit, um über etwas zu reden?","Wer tröstet besser?","Wer hat den größeren Einfluss auf den anderen gehabt?","Wer hat sich in der Beziehung mehr verändert?","Wer sagt öfter zuerst 'Ich liebe dich'?","Wer verzeiht schneller?","Wer denkt öfter an die Zukunft?","Wer würde für den anderen eher etwas riskieren?","Wer erträgt Streit schlechter?","Wer träumt öfter von gemeinsamen Zielen?","Wer hat aus der Fernbeziehung mehr gelernt?","Wer vermisst den anderen intensiver?","Wer würde für den anderen umziehen, ohne zu zögern?","Wer ist der emotional stärkere in schweren Zeiten?","Wer denkt öfter an die gemeinsame Zukunft?","Wer hat mehr Angst vor Veränderung?","Wer glaubt mehr an Schicksal?","Wer würde als Erstes einen Heiratsantrag machen?","Wer ist geduldiger mit den Schwächen des anderen?","Wer hat mehr Vertrauen in die Beziehung?","Wer denkt öfter über den Sinn des Lebens nach?","Wer ist der bessere Zuhörer?","Wer würde in einer Krise zuerst Hilfe holen?","Wer träumt öfter von einem gemeinsamen Zuhause?","Wer würde für den anderen den Job wechseln?","Wer ist dankbarer für kleine Dinge?","Wer hat mehr Angst, den anderen zu verlieren?","Wer glaubt eher an die große Liebe fürs Leben?","Wer redet offener über eigene Ängste?","Wer versteht den anderen ohne viele Worte?","Wer würde für den anderen die eigenen Pläne ändern?","Wer ist mutiger, wenn es um große Entscheidungen geht?","Wer hat größere Zukunftsängste?","Wer glaubt mehr daran, dass am Ende alles gut wird?","Wer würde sich eher entschuldigen, auch wenn er/sie nicht schuld ist?","Wer schätzt Zweisamkeit mehr als Gesellschaft?","Wer hat mehr Sehnsucht nach einem gemeinsamen Alltag?","Wer ist der geduldigere Teil in der Fernbeziehung?","Wer würde für den anderen alles stehen und liegen lassen?","Wer hat mehr Respekt vor den Grenzen des anderen?","Wer würde in einem Streit zuerst anrufen, um sich zu vertragen?","Wer glaubt, dass Distanz eine Beziehung stärker macht?","Wer träumt öfter von der Hochzeit?","Wer hat sich am meisten auf den anderen verlassen?","Wer erinnert sich besser an das erste Date?","Wer weiß noch, was beim ersten Kennenlernen gesagt wurde?","Wer hat das bessere Namensgedächtnis für gemeinsame Freunde?","Wer erinnert sich an mehr Jahrestage?","Wer weiß noch das Lied vom ersten Tanz?","Wer hat das schönste gemeinsame Erlebnis in Erinnerung?","Wer erinnert sich besser an den ersten gemeinsamen Urlaub?","Wer weiß noch, wie der erste Kuss war?","Wer erinnert sich an das lustigste gemeinsame Erlebnis?","Wer hat das peinlichste gemeinsame Erlebnis nicht vergessen?","Wer weiß noch, welches Restaurant das erste gemeinsame war?","Wer erinnert sich an mehr Details vom Kennenlern-Abend?","Wer weiß noch das erste gemeinsame Geschenk?","Wer erinnert sich besser an vergangene Streitthemen?","Wer weiß noch, wie das erste gemeinsame Zimmer aussah?","Wer hat mehr Fotos von früher gespeichert?","Wer erinnert sich an das schlimmste gemeinsame Missgeschick?","Wer weiß noch, wer zuerst 'Ich liebe dich' gesagt hat?","Wer erinnert sich an die verrückteste gemeinsame Nacht?","Wer hat den ersten gemeinsamen Streit nicht vergessen?","Wer erinnert sich besser an das erste gemeinsame Konzert?","Wer weiß noch, wo der erste gemeinsame Kaffee war?","Wer erinnert sich an das schönste Kompliment vom anderen?","Wer weiß noch, wann genau die Beziehung offiziell wurde?","Wer hat die erste gemeinsame Reise besser in Erinnerung?","Wer erinnert sich an den ersten gemeinsamen Filmabend?","Wer weiß noch, welches Auto beim ersten Date gefahren wurde?","Wer erinnert sich besser an alte Insider-Witze?","Wer hat das erste gemeinsame Weihnachten besser im Kopf?","Wer weiß noch, wie das erste 'Ich vermisse dich' klang?","Wer erinnert sich an das aufregendste gemeinsame Abenteuer?","Wer weiß noch, wer zuerst verliebt war?","Wer erinnert sich besser an gemeinsame Kindheitsgeschichten?","Wer hat die erste gemeinsame Wohnung besser in Erinnerung?","Wer weiß noch das Datum vom ersten Treffen der Familien?","Wer hat mehr Ideen für die gemeinsame Zukunft?","Wer würde lieber in der Stadt oder auf dem Land leben?","Wer wünscht sich mehr Kinder?","Wer will zuerst heiraten?","Wer träumt vom größeren Haus?","Wer würde lieber im Ausland leben?","Wer plant die Zukunft realistischer?","Wer träumt öfter vom Traumjob?","Wer würde lieber früher in Rente gehen?","Wer hat konkretere Vorstellungen von der Hochzeit?","Wer wünscht sich mehr Haustiere?","Wer würde lieber auswandern?","Wer träumt vom eigenen Garten?","Wer hat den größeren Ehrgeiz im Job?","Wer würde lieber ein eigenes Business starten?","Wer wünscht sich einen ruhigeren oder aufregenderen Alltag?","Wer plant die Rente sorgfältiger?","Wer träumt vom Camper-Van-Roadtrip?","Wer hat mehr Bucket-List-Punkte?","Wer würde lieber ein Sabbatjahr machen?","Wer wünscht sich mehr gemeinsame Hobbys?","Wer träumt vom Haus am Meer?","Wer plant Weihnachten für die nächsten Jahre schon jetzt?","Wer würde lieber ein Fixer-Upper-Haus renovieren?","Wer hat konkretere Vorstellungen vom Traumurlaub?","Wer würde lieber im Wohnmobil durch Europa reisen?","Wer träumt vom eigenen Weinberg oder Garten?","Wer wünscht sich mehr Abenteuer im Alltag?","Wer plant den nächsten großen Kauf genauer?","Wer träumt öfter von einem ruhigen Lebensabend?","Wer würde lieber ein Boot besitzen?","Wer hat mehr Ideen für die Traumhochzeit?","Wer wünscht sich mehr Reisen mit der Familie?","Wer träumt vom eigenen Café oder Restaurant?","Wer plant öfter im Voraus, statt spontan zu entscheiden?","Wer würde bei 'Wer wird Millionär' weiter kommen?","Wer würde eine Woche im Dschungelcamp überleben?","Wer würde beim Grillen zuerst was anbrennen lassen?","Wer würde sich bei einem Fluchtraum als Anführer aufspielen?","Wer wäre die bessere Spionin/der bessere Spion?","Wer würde bei einem Umzug zuerst die Nerven verlieren?","Wer würde beim Karaoke mutiger auf die Bühne gehen?","Wer würde in einem Actionfilm die Hauptrolle überleben?","Wer würde einen Marathon eher schaffen?","Wer wäre der bessere Pirat?","Wer würde in der Steinzeit besser überleben?","Wer würde beim Pokerabend mehr gewinnen?","Wer würde sich eher trauen, Fallschirm zu springen?","Wer wäre der bessere Superheld?","Wer würde bei einer Achterbahn zuerst schreien?","Wer würde ein Lagerfeuer besser hinbekommen?","Wer würde beim Umzug mehr Kisten falsch beschriften?","Wer würde sich eher auf einen Insekten-Snack einlassen?","Wer würde beim Escape Room das Rätsel zuerst lösen?","Wer wäre der bessere Detektiv?","Wer würde beim Wandern öfter den Weg verlieren?","Wer würde sich trauen, mit Haien zu schwimmen?","Wer wäre auf einer einsamen Insel überlebensfähiger?","Wer würde beim Kochwettbewerb die Nerven behalten?","Wer würde bei einem Blackout zuerst in Panik geraten?","Wer wäre der bessere Weltraum-Astronaut?","Wer würde bei einer Zeitreise ins Mittelalter besser klarkommen?","Wer würde als Erstes bei einem Streich lachen müssen?","Wer wäre der bessere Zauberer?","Wer würde beim Bungee-Jumping zuerst absagen?","Wer würde in einem Horrorfilm zuerst überleben?","Wer wäre der bessere Cowboy oder Cowgirl?","Wer würde beim Schach gewinnen?","Wer würde bei einem Roadtrip die Musik bestimmen wollen?","Wer würde beim Lagerfeuer die gruseligste Geschichte erzählen?","Wer wäre der bessere Ritter im Mittelalter?","Wer würde beim Angeln mehr Geduld haben?","Wer würde beim Camping zuerst das Zelt aufbauen können?","Wer würde sich als Erstes ein Bein ausreißen für ein Konzert-Ticket?","Wer wäre der bessere Roboter-Erfinder?","Wer würde bei einem Sturm zuerst die Fenster sichern?","Wer würde in einer WG mit sechs Fremden besser klarkommen?","Wer wäre der bessere Gärtner?","Wer würde beim Feuerwerk mutiger die Rakete anzünden?","Wer würde beim Umziehen zuerst das schwere Sofa tragen wollen?","Wer hat den besseren Kleidungsstil?","Wer mag lieber Berge oder Meer?","Wer bevorzugt süß oder herzhaft?","Wer mag lieber Sommer oder Winter?","Wer hat den ausgefalleneren Filmgeschmack?","Wer mag lieber Katzen oder Hunde?","Wer bevorzugt Städtetrips oder Strandurlaub?","Wer hat die bessere Playlist?","Wer mag lieber Frühstück oder Abendessen?","Wer bevorzugt Bücher oder Filme?","Wer hat den besseren Kaffeegeschmack?","Wer mag lieber Pizza oder Pasta?","Wer bevorzugt Berge wandern oder am Strand liegen?","Wer hat den besseren Einrichtungsstil?","Wer mag lieber Frühling oder Herbst?","Wer bevorzugt Camping oder Hotel?","Wer hat den mutigeren Modegeschmack?","Wer mag lieber scharfes oder mildes Essen?","Wer bevorzugt Serien-Marathon oder Kinoabend?","Wer hat den besseren Humor?","Wer mag lieber Regen oder Sonnenschein?","Wer bevorzugt Party oder ruhigen Abend zu zweit?","Wer hat den besseren Geschmack bei Wein?","Wer mag lieber Actionfilme oder Liebesfilme?","Wer bevorzugt Berge oder Wüste?","Wer hat den besseren Musikgeschmack für Roadtrips?","Wer mag lieber Frühaufsteher- oder Nachteulen-Stimmung?","Wer bevorzugt kalte oder warme Getränke?","Wer hat den ausgefalleneren Deko-Geschmack?","Wer mag lieber Grillabende oder Restaurantbesuche?","Wer bevorzugt Städtereisen oder Naturausflüge?","Wer hat den besseren Geschmack bei Geschenken?","Wer mag lieber laute oder leise Musik?","Wer bevorzugt Brettspiele oder Videospiele?","Wer hat den mutigeren Geschmack beim Essen probieren?","Wer sorgt öfter für gute Stimmung, wenn es dem anderen schlecht geht?","Wer plant öfter kleine Überraschungen?","Wer schreibt liebevollere Nachrichten?","Wer merkt sich Kleinigkeiten besser, die dem anderen wichtig sind?","Wer nimmt sich mehr Zeit für den anderen?","Wer sagt öfter, wie stolz er/sie auf den anderen ist?","Wer plant öfter romantische Abende?","Wer hört bei Problemen des anderen aufmerksamer zu?","Wer macht öfter den ersten Schritt nach einem Streit?","Wer merkt zuerst, wenn der andere schlechte Laune hat?","Wer bringt öfter kleine Aufmerksamkeiten mit?","Wer schafft es besser, den Alltag trotz Distanz besonders zu machen?","Wer traut sich öfter, Gefühle in Worte zu fassen?","Wer plant die Videoanrufe liebevoller?","Wer merkt sich Vorlieben und Abneigungen des anderen besser?","Wer gibt öfter Komplimente?","Wer schafft es besser, den anderen aufzumuntern?","Wer denkt öfter darüber nach, wie es dem anderen gerade geht?","Wer plant öfter kleine Rituale für die Fernbeziehung?","Wer schreibt die schöneren Gute-Nacht-Nachrichten?","Wer merkt öfter, wenn dem anderen etwas fehlt, ohne dass er/sie es sagt?","Wer bringt mehr Geduld auf, wenn der andere gestresst ist?","Wer schafft es besser, trotz Entfernung Nähe zu vermitteln?","Wer plant öfter, wie man die nächste gemeinsame Zeit verbringt?","Wer merkt sich Jahrestage besser?","Wer traut sich eher zu sagen 'Ich brauche dich gerade'?","Wer schafft es besser, in stressigen Zeiten für den anderen da zu sein?","Wer denkt öfter an kleine Geschenke zwischendurch?","Wer plant öfter, wie man sich als Nächstes sieht?","Wer schätzt die gemeinsame Zeit bewusster?","Wer merkt öfter kleine Veränderungen beim anderen?","Wer gibt öfter ehrliches Feedback, auch wenn es unangenehm ist?","Wer schafft es besser, in einem Streit ruhig zu bleiben?","Wer plant öfter Dinge, auf die man sich gemeinsam freuen kann?","Wer schafft es besser, trotz Stress liebevoll zu bleiben?","Wer wäre die bessere Führungskraft?","Wer hat den größeren Orientierungssinn in fremden Städten?","Wer würde ein Haustier besser erziehen?","Wer hat die bessere Handschrift?","Wer würde ein Startup erfolgreicher führen?","Wer kann besser mit Geld umgehen?","Wer würde bei einem Umzug organisierter vorgehen?","Wer hat das bessere Gedächtnis für Zahlen?","Wer würde einen Garten besser pflegen?","Wer kann besser improvisieren?","Wer würde ein Buch schreiben, wenn beide müssten?","Wer hat den größeren Wortschatz?","Wer würde ein Instrument schneller lernen?","Wer kann besser mit Technik umgehen?","Wer würde eine Fremdsprache schneller lernen?","Wer hat das bessere Zahlengedächtnis für Geburtstage?","Wer würde einen Handwerker-Job besser meistern?","Wer kann besser verhandeln?","Wer würde bei einem Quizabend die schwierigeren Fragen lösen?","Wer hat das bessere Auge für Details?","Wer würde eine Rede vor vielen Leuten souveräner halten?","Wer kann besser mit Kritik von Fremden umgehen?","Wer würde einen Roman lieber schreiben als lesen?","Wer hat das bessere räumliche Vorstellungsvermögen?","Wer würde ein Museum interessanter finden?","Wer kann besser zeichnen?","Wer würde ein Escape-Room-Rätsel logischer angehen?","Wer hat den größeren Orientierungssinn beim Navigieren ohne Handy?","Wer würde besser mit einer Überraschungsparty umgehen?","Wer kann besser fotografieren?","Wer würde eine Wanderung besser planen?","Wer hat das bessere Gespür für gutes Wetter?","Wer würde ein Zelt schneller aufbauen?","Wer kann besser mit Stress in der Arbeit umgehen?","Wer würde einen Segelkurs schneller meistern?","Wer hat das bessere Verständnis für Technik-Probleme?","Wer würde ein Rezept öfter improvisieren, statt es genau zu befolgen?","Wer kann sich Wegbeschreibungen besser merken?","Wer würde ein Fahrrad schneller reparieren?","Wer hat das bessere Timing bei Witzen?","Wer würde einen Podcast interessanter moderieren?","Wer kann sich besser an Filmzitate erinnern?"];
 
-    // ---------- Sprüche & Ferien ----------
     var SPRUECHE = ["Jeder Tag weniger ist ein Tag näher an dir.","Distanz ist nur eine Zahl, kein Gefühl.","So weit weg und trotzdem jeden Tag bei dir.","Bald ist wieder jeder Tag ein gemeinsamer.","Manchmal ist warten der Beweis, wie sehr man will.","Du fehlst mir heute genauso wie gestern.","Ein Countdown für das Beste, was mir passiert ist.","Noch ein paar Monate, dann für immer wieder zu zweit.","Ich freu mich schon auf ganz normale, langweilige Tage mit dir.","Die Zeit vergeht, aber wir bleiben.","Ein Anruf ersetzt keine Umarmung, aber er hilft.","Zuhause ist kein Ort, sondern da, wo du bist.","Wir schaffen das, wie wir schon so vieles geschafft haben.","Warten fühlt sich leichter an, wenn man weiß, worauf.","6,5 Jahre und immer noch freu ich mich auf jedes Wiedersehen.","Bald sind wir wieder das Team, das keine Ausrede mehr braucht.","Ich vermisse die kleinen Dinge am meisten.","Ein Tag weniger warten, ein Tag näher am Alltag zu zweit.","Manche Dinge sind die Wartezeit wert, und du bist eines davon.","Noch etwas Geduld, dann ist die Ferne wieder Geschichte.","Ich zähl nicht die Tage, ich zähl auf uns.","Bald keine Videoanrufe mehr, sondern echte Umarmungen.","Was schwer ist, macht das Ankommen später umso schöner.","Ich freu mich auf ganz normale Abende mit dir, ohne Abschied danach.","Wir haben schon so viel gemeistert – das hier auch.","Du bist die Person, für die sich Warten lohnt.","Bald ist Osnabrück wieder komplett.","Der Weg zum Scheitern beginnt mit dem ersten Schritt.","Ich hab kein Problem mit Montagen, ich hab ein Problem mit jedem Tag danach auch.","Wer wagt, verliert meistens auch.","Kreativität ist, wenn Chaos einen guten Tag hat.","Winke winke macht Leon's Fuß.","Wie viele gibt's?","Meine Schatzigkeit in Personigkeit.","Das überrascht mich jetzt.","Da kann ich mir nur an den Fass Kopf.","Da sieht man einfach die hat echt Grips."];
     var FERIEN = [
       { name: "Herbstferien", start: "2026-10-12" },
@@ -378,6 +402,39 @@
       { name: "Pfingstferien", start: "2027-05-14" },
       { name: "Sommerferien", start: "2027-06-21" },
       { name: "Herbstferien", start: "2027-10-04" }
+    ];
+
+    var ZUFALLSFAKTEN = [
+      "Ein Kuss verbrennt etwa 2 bis 3 Kalorien pro Minute.",
+      "Herzen von frisch verliebten Menschen schlagen im Beisammensein oft im gleichen Takt.",
+      "Der längste Videoanruf-Weltrekord liegt bei über 21 Stunden am Stück.",
+      "Oktopusse haben drei Herzen und blaues Blut.",
+      "Honig verdirbt praktisch nie – in ägyptischen Gräbern wurde noch essbarer Honig gefunden, der über 3000 Jahre alt war.",
+      "Ein Blitz ist etwa fünfmal heißer als die Oberfläche der Sonne.",
+      "Bananen sind Beeren, Erdbeeren botanisch gesehen nicht.",
+      "Der Eiffelturm wird im Sommer durch Hitze bis zu 15 cm größer.",
+      "Delfine geben sich gegenseitig Namen in Form individueller Pfeiflaute.",
+      "Ein Tag auf der Venus dauert länger als ein Jahr auf der Venus.",
+      "Katzen können über 100 verschiedene Laute machen, Hunde nur etwa 10.",
+      "Wenn man aufeinander zuläuft, klingt es wie ein Herzschlag – Synchronisation liegt uns im Blut.",
+      "Der kürzeste Krieg der Geschichte dauerte nur 38 Minuten (Sansibar, 1896).",
+      "Rote Rosen bedeuten Liebe, gelbe eigentlich traditionell Freundschaft.",
+      "Menschen sind die einzigen Tiere, die vor Rührung weinen.",
+      "Ein Schneckenrennen wäre schnell entschieden – trotzdem legt eine Schnecke nur etwa 1 mm pro Sekunde zurück.",
+      "Die Chance, mit dem exakt gleichen Menschen zwei verschiedene Fingerabdrücke zu teilen, ist praktisch null.",
+      "Regenwürmer haben fünf Herzen.",
+      "Der Klang eines Kusses entsteht durch ein kleines Vakuum zwischen den Lippen.",
+      "Wenn man sich in die Augen schaut, synchronisieren sich oft auch die Atemzüge.",
+      "Ein Regenbogen ist eigentlich ein voller Kreis – vom Boden aus sehen wir nur die Hälfte.",
+      "Das höchste Gebäude der Welt, der Burj Khalifa, ist über 828 Meter hoch.",
+      "Zugvögel wie Kraniche bleiben oft ein Leben lang mit demselben Partner zusammen.",
+      "Der Mond entfernt sich jedes Jahr etwa 3,8 cm weiter von der Erde.",
+      "Ein Krokodil kann seine Zunge nicht herausstrecken.",
+      "Beim Verliebtsein schüttet das Gehirn ähnliche Stoffe aus wie bei Schokolade.",
+      "Papageien können sich gegenseitig mit selbst erfundenen Kosenamen rufen.",
+      "Ein Tintenfisch kann seine Farbe schneller wechseln als ein Chamäleon.",
+      "Am längsten Tag des Jahres (21. Juni) geht die Sonne in Norwegen gar nicht unter.",
+      "Der Klang eines Herzschlags kann sich bei zwei sich nahestehenden Menschen im Schlaf angleichen."
     ];
 
     var ZIEL_DATUM = new Date("2027-07-08T00:00:00");
@@ -397,7 +454,6 @@
       return j * 1000 + tagImJahr;
     }
 
-    // ---------- Optische Effekte ----------
     function zeigeKonfetti() {
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
       var farben = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#a06cd5', '#ff9f43'];
@@ -446,7 +502,38 @@
       }
     }
 
-    // ---------- Spezialtage, Meilensteine, Wochenende, Jahreszeiten ----------
+    var EASTER_EGG_TAGES_CHANCE = 0.35;
+    var easterEggGewuerfelt = false;
+
+    function pruefeEasterEgg() {
+      if (easterEggGewuerfelt || !meinUser) return;
+      easterEggGewuerfelt = true;
+
+      var heute = heutigesDatumSchluessel();
+      if (localStorage.getItem('geschenkGesehen_' + heute)) return;
+
+      var seed = 0;
+      for (var i = 0; i < heute.length; i++) { seed += heute.charCodeAt(i); }
+      if ((seed % 100) / 100 >= EASTER_EGG_TAGES_CHANCE) return;
+
+      document.getElementById('geschenk-icon').classList.remove('hidden');
+    }
+
+    function oeffneGeschenk() {
+      var heute = heutigesDatumSchluessel();
+      var fakt = ZUFALLSFAKTEN[Math.floor(Math.random() * ZUFALLSFAKTEN.length)];
+      document.getElementById('fakt-text').innerText = fakt;
+      document.getElementById('fakt-overlay').classList.remove('hidden');
+      document.getElementById('geschenk-icon').classList.add('hidden');
+      localStorage.setItem('geschenkGesehen_' + heute, '1');
+      zeigeKonfetti();
+    }
+
+    document.getElementById('geschenk-icon').addEventListener('click', oeffneGeschenk);
+    document.getElementById('fakt-schliessen-button').addEventListener('click', function () {
+      document.getElementById('fakt-overlay').classList.add('hidden');
+    });
+
     var letztGefeierterMeilenstein = null;
     var MEILENSTEINE = [300, 250, 200, 150, 100, 75, 50, 25, 10, 5, 3, 2, 1, 0];
 
@@ -468,7 +555,7 @@
       box.classList.remove('spezialtag-valentinstag', 'spezialtag-weihnachten', 'spezialtag-jahrestag', 'spezialtag-unterrichtsbesuch', 'wochenende');
 
       var heute = new Date();
-      var tagMonat = heutigesDatumSchluessel().substring(5); // "MM-dd"
+      var tagMonat = heutigesDatumSchluessel().substring(5);
       var wochentag = heute.getDay();
 
       if (tagMonat === '02-14') { box.classList.add('spezialtag-valentinstag'); }
@@ -480,7 +567,7 @@
 
     var letzteJahreszeitenDekoBesuch = false;
     function pruefeJahreszeitenDeko() {
-      if (letzteJahreszeitenDekoBesuch) return; // nur einmal pro Sitzung
+      if (letzteJahreszeitenDekoBesuch) return;
       if (Math.random() >= (1 / 5)) return;
       letzteJahreszeitenDekoBesuch = true;
 
@@ -491,14 +578,12 @@
       else zeigeFallendePartikel(['#ffffff'], 15);
     }
 
-    // ---------- Box ein-/ausklappen ----------
     function toggleBox() {
       document.getElementById('countdown-box').classList.toggle('eingeklappt');
     }
     document.getElementById('box-toggle').addEventListener('click', toggleBox);
     document.getElementById('box-toggle-label').addEventListener('click', toggleBox);
 
-    // ---------- Tägliches Foto (von Google Drive) ----------
     async function getBilderIdListeGecached() {
       var cache = localStorage.getItem('bilderIdCache');
       var zeitstempel = localStorage.getItem('bilderIdCacheZeit');
@@ -532,8 +617,6 @@
       var heute = heutigesDatumSchluessel();
       var cacheKey = 'fotoCache_' + heute;
 
-      // Erst schauen, ob das heutige Foto schon zwischengespeichert ist -
-      // dann sofort anzeigen, ganz ohne erneutes Herunterladen.
       var gecachtesFoto = localStorage.getItem(cacheKey);
       if (gecachtesFoto) {
         document.body.style.backgroundImage = "url('" + gecachtesFoto + "')";
@@ -551,7 +634,6 @@
           var datenUrl = reader.result;
           document.body.style.backgroundImage = "url('" + datenUrl + "')";
           try {
-            // Alte Foto-Zwischenspeicher (von früheren Tagen) entfernen, um Platz zu sparen
             Object.keys(localStorage).forEach(function (k) {
               if (k.indexOf('fotoCache_') === 0 && k !== cacheKey) localStorage.removeItem(k);
             });
@@ -596,12 +678,10 @@
       if (kommende.length === 0) {
         document.getElementById('ferien-text').innerText = '';
         return;
-
       }
       var naechste = kommende[0];
       var startDatum = new Date(naechste.start + 'T00:00:00');
 
-      // Beginnen die Ferien an einem Montag, ab Freitag davor zählen (Wochenende ist eh frei)
       if (startDatum.getDay() === 1) {
         startDatum.setDate(startDatum.getDate() - 3);
       }
@@ -616,7 +696,6 @@
       }
     }
 
-    // ---------- Abstimmung + Streak ----------
     function getFrageDesTages(tagIndex) {
       return FRAGEN[tagIndex % FRAGEN.length];
     }
@@ -764,7 +843,6 @@
       ladeAbstimmung();
     });
 
-    // ---------- Historie ----------
     var MONATS_NAMEN = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
     async function zeigeHistorie() {
@@ -810,7 +888,6 @@
       document.getElementById('bestaetigung-overlay').classList.remove('hidden');
     });
 
-    // ---------- Statistik ----------
     async function zeigeStatistik() {
       zeigeScreen('statistik');
       var container = document.getElementById('statistik-inhalt');
@@ -874,7 +951,6 @@
 
     document.getElementById('link-statistik').addEventListener('click', zeigeStatistik);
 
-    // ---------- Chat (Brief-Fach) ----------
     async function ladeBriefe() {
       if (!istAngemeldet) return;
       var container = document.getElementById('briefe-liste');
@@ -922,7 +998,6 @@
       if (e.key === 'Enter') sendeBrief();
     });
 
-    // ---------- Ich denk an dich ----------
     var letzteGesehenGedankeZeit = 0;
 
     async function sendeGedanke() {
@@ -959,7 +1034,6 @@
     document.getElementById('gedanke-button').addEventListener('click', sendeGedanke);
     setInterval(pruefeGedanke, 30000);
 
-    // ---------- Online-Status ----------
     async function sendeHerzschlag() {
       if (!istAngemeldet || !meinUser) return;
       await setDoc(doc(db, 'einstellungen', 'zuletztAktiv_' + meinUser), { zeit: Date.now() });
@@ -981,7 +1055,6 @@
 
     setInterval(function () { sendeHerzschlag(); pruefeOnlineStatus(); }, 30000);
 
-    // ---------- Navigation ----------
     function zeigeScreen(name) {
       ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik'].forEach(function (n) {
         document.getElementById('screen-' + n).classList.toggle('hidden', n !== name);
@@ -993,7 +1066,6 @@
     document.getElementById('nav-abstimmung').addEventListener('click', () => { zeigeScreen('abstimmung'); ladeAbstimmung(); });
     document.getElementById('nav-briefe').addEventListener('click', () => { zeigeScreen('briefe'); ladeBriefe(); });
 
-    // ---------- Dark/Light/System-Modus ----------
     var farbModi = ['system', 'light', 'dark'];
     var aktuellerModus = localStorage.getItem('farbmodus') || 'system';
 
@@ -1011,15 +1083,11 @@
       wendeFarbmodusAn();
     });
 
-    // ---------- Start ----------
     wendeFarbmodusAn();
     renderCountdown();
     pruefeJahreszeitenDeko();
     ladeFotoDesTages();
 
-    // Erzwingt, dass der Browser die Position der fest positionierten Elemente
-    // (Kopfzeile, untere Leiste) sofort korrekt neu berechnet, statt erst nach
-    // einem manuellen Scrollen durch den Nutzer.
     window.scrollTo(0, 1);
     setTimeout(function () { window.scrollTo(0, 0); }, 50);
 
@@ -1028,7 +1096,7 @@
         console.error('Service Worker Registrierung fehlgeschlagen:', e);
       });
     }
-    setInterval(renderCountdown, 60000); // jede Minute neu berechnen
+    setInterval(renderCountdown, 60000);
   </script>
 </body>
 </html>
