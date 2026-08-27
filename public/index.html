@@ -78,6 +78,7 @@
     }
     .box.eingeklappt #box-inhalt { display: none; }
     .box.eingeklappt #box-toggle { display: none; }
+    .box.eingeklappt #geschenk-icon { display: none; }
     .box.eingeklappt #box-toggle-label { display: inline-block; }
     h1 { font-size: 3em; margin: 0 0 4px 0; }
     .fortschritt-container {
@@ -215,12 +216,12 @@
     #gedanke-toast.hidden { display: none; }
 
     #geschenk-icon {
-      position: fixed; bottom: 90px; right: 16px;
+      position: absolute; top: 10px; left: 14px;
       background: var(--accent-bg); color: white;
-      width: 46px; height: 46px; border-radius: 50%;
+      width: 32px; height: 32px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.4em; cursor: pointer; z-index: 600;
-      box-shadow: 0 3px 10px var(--shadow-soft);
+      font-size: 1.1em; cursor: pointer; z-index: 5;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.45);
       animation: geschenk-wackeln 1.8s ease-in-out infinite;
     }
     #geschenk-icon.hidden { display: none; }
@@ -256,6 +257,7 @@
   <div id="screen-countdown" class="screen">
     <div class="box" id="countdown-box">
       <div id="box-toggle">▾</div>
+      <div id="geschenk-icon" class="hidden" title="Ein kleines Geschenk für dich...">🎁</div>
       <div id="box-inhalt">
         <p id="online-status" class="hidden" style="color:#4caf50; font-weight:bold; margin-bottom:8px;">🟢 ist gerade auch da</p>
         <h1 id="countdown-zahl">-</h1>
@@ -312,8 +314,6 @@
       </div>
     </div>
   </div>
-
-  <div id="geschenk-icon" class="hidden" title="Ein kleines Geschenk für dich...">🎁</div>
 
   <div id="fakt-overlay" class="hidden">
     <div class="box">
