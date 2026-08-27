@@ -1178,7 +1178,15 @@
       if (e.key === 'Enter') sendeBrief();
     });
 
-    var letzteGesehenGedankeZeit = 0;
+    function getLetzteGesehenGedankeZeit() {
+      if (!meinUser) return 0;
+      var gespeichert = localStorage.getItem('letzteGesehenGedankeZeit_' + meinUser);
+      return gespeichert ? Number(gespeichert) : 0;
+    }
+    function setzeLetzteGesehenGedankeZeit(zeit) {
+      if (!meinUser) return;
+      localStorage.setItem('letzteGesehenGedankeZeit_' + meinUser, String(zeit));
+    }
 
     async function sendeGedanke() {
       var partnerName = meinUser === 'leon' ? 'Lotta' : 'Leon';
@@ -1204,11 +1212,12 @@
       var snap = await getDoc(doc(db, 'einstellungen', 'letzterGedanke'));
       if (!snap.exists()) return;
       var d = snap.data();
+      var letzteGesehenGedankeZeit = getLetzteGesehenGedankeZeit();
       if (d.von !== meinUser && d.zeit > letzteGesehenGedankeZeit) {
         var partnerName = meinUser === 'leon' ? 'Lotta' : 'Leon';
         zeigeGedankeToast('❤️ ' + partnerName + ' denkt gerade an dich');
       }
-      letzteGesehenGedankeZeit = Math.max(letzteGesehenGedankeZeit, d.zeit);
+      setzeLetzteGesehenGedankeZeit(Math.max(letzteGesehenGedankeZeit, d.zeit));
     }
 
     document.getElementById('gedanke-button').addEventListener('click', sendeGedanke);
@@ -1286,6 +1295,7 @@
   </script>
 </body>
 </html>
+
 
 
 
