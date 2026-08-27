@@ -15,12 +15,11 @@ const NAME = { leon: "Leon", lotta: "Lotta" };
 // Hilfsfunktion: Push an einen Nutzer (leon/lotta) schicken.
 // Entfernt automatisch Tokens, die nicht mehr gültig sind (z.B. altes Handy).
 //
-// WICHTIG: Wir schicken absichtlich NUR "data" (keine "notification").
-// Sobald eine Nachricht ein "notification"-Feld hat, zeigt der Browser sie
-// automatisch selbst an - UND unser eigener Anzeige-Code zeigt sie nochmal.
-// Das führte zu doppelten Benachrichtigungen. Mit reinem "data" übernehmen
-// wir die Anzeige komplett selbst (genau einmal, im Service Worker bzw. im
-// Vordergrund-Handler in der App).
+// Wir schicken "notification" (Titel/Text) UND "data" (Zusatzinfos).
+// Die Anzeige übernimmt der Browser automatisch anhand von "notification" -
+// wir rufen selbst KEIN showNotification() mehr im Service Worker auf, damit
+// nichts doppelt angezeigt wird und nichts durch einen eigenen Anzeige-Fehler
+// leer/verloren gehen kann.
 // ---------------------------------------------------------------------------
 async function sendeAnNutzer(nutzer, titel, body, extraData) {
   var tokenDoc = await db.collection("push_tokens").doc(nutzer).get();
@@ -28,12 +27,12 @@ async function sendeAnNutzer(nutzer, titel, body, extraData) {
   var tokens = tokenDoc.data().tokens || [];
   if (tokens.length === 0) return;
 
-  var daten = Object.assign({ titel: titel, body: body }, extraData || {});
-
   var nachricht = {
     tokens: tokens,
-    data: daten,
+    notification: { title: titel, body: body },
+    data: extraData || {},
     webpush: {
+      notification: { icon: "/icon.svg" },
       fcmOptions: { link: "/" }
     }
   };
@@ -130,4 +129,5 @@ exports.beiNeuerNachrichtBenachrichtigen = onDocumentCreated("briefe/{briefId}",
   var vorschau = (daten.text || "").length > 80 ? daten.text.substring(0, 77) + "..." : (daten.text || "");
   await sendeAnNutzer(empfaenger, "Neue Nachricht von " + absenderName, vorschau, { typ: "neue_nachricht" });
 });
+
 
