@@ -1051,11 +1051,12 @@
         html = '<div class="statistik-box"><p>Noch keine gemeinsam beantwortete Frage.</p></div>';
       } else {
         var prozentEinig = Math.round((einigkeit / beantwortet) * 100);
+        var prozentUneinig = 100 - prozentEinig;
         html += '<div class="statistik-box">' +
           '<p class="statistik-titel">📊 Gemeinsam beantwortete Fragen</p>' +
           '<p class="statistik-zahl-gross">' + beantwortet + '</p>' +
           '<div class="statistik-zeile"><span>🤝 Einig</span><b>' + einigkeit + ' (' + prozentEinig + '%)</b></div>' +
-          '<div class="statistik-zeile"><span>😄 Uneinig</span><b>' + uneinigkeit + '</b></div>' +
+          '<div class="statistik-zeile"><span>😄 Uneinig</span><b>' + uneinigkeit + ' (' + prozentUneinig + '%)</b></div>' +
           '</div>';
 
         var leonGesamt = w.leonFuerLeon + w.leonFuerLotta;
@@ -1285,6 +1286,7 @@
   </script>
 </body>
 </html>
+
 
 
 
