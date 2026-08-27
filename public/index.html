@@ -529,19 +529,41 @@
       if (ids.length === 0) return;
       var tagIndex = getTagIndex();
       var index = tagIndex % ids.length;
+      var heute = heutigesDatumSchluessel();
+      var cacheKey = 'fotoCache_' + heute;
+
+      // Erst schauen, ob das heutige Foto schon zwischengespeichert ist -
+      // dann sofort anzeigen, ganz ohne erneutes Herunterladen.
+      var gecachtesFoto = localStorage.getItem(cacheKey);
+      if (gecachtesFoto) {
+        document.body.style.backgroundImage = "url('" + gecachtesFoto + "')";
+        return;
+      }
+
       var apiKey = window.__DRIVE_API_KEY__;
       var bildUrl = 'https://www.googleapis.com/drive/v3/files/' + ids[index] + '?alt=media&key=' + apiKey;
 
-      // Bild im Hintergrund vollständig vorladen, bevor es angezeigt wird -
-      // verhindert einen hässlichen halb geladenen Zwischenzustand.
-      var vorschauBild = new Image();
-      vorschauBild.onload = function () {
-        document.body.style.backgroundImage = "url('" + bildUrl + "')";
-      };
-      vorschauBild.onerror = function () {
-        console.error('Foto konnte nicht geladen werden.');
-      };
-      vorschauBild.src = bildUrl;
+      try {
+        var res = await fetch(bildUrl);
+        var blob = await res.blob();
+        var reader = new FileReader();
+        reader.onload = function () {
+          var datenUrl = reader.result;
+          document.body.style.backgroundImage = "url('" + datenUrl + "')";
+          try {
+            // Alte Foto-Zwischenspeicher (von früheren Tagen) entfernen, um Platz zu sparen
+            Object.keys(localStorage).forEach(function (k) {
+              if (k.indexOf('fotoCache_') === 0 && k !== cacheKey) localStorage.removeItem(k);
+            });
+            localStorage.setItem(cacheKey, datenUrl);
+          } catch (e) {
+            console.warn('Foto konnte nicht zwischengespeichert werden:', e);
+          }
+        };
+        reader.readAsDataURL(blob);
+      } catch (e) {
+        console.error('Foto konnte nicht geladen werden:', e);
+      }
     }
 
     function renderCountdown() {
