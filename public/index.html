@@ -415,39 +415,6 @@
       { name: "Herbstferien", start: "2027-10-04" }
     ];
 
-    var ZUFALLSFAKTEN = [
-      "Ein Kuss verbrennt etwa 2 bis 3 Kalorien pro Minute.",
-      "Herzen von frisch verliebten Menschen schlagen im Beisammensein oft im gleichen Takt.",
-      "Der längste Videoanruf-Weltrekord liegt bei über 21 Stunden am Stück.",
-      "Oktopusse haben drei Herzen und blaues Blut.",
-      "Honig verdirbt praktisch nie – in ägyptischen Gräbern wurde noch essbarer Honig gefunden, der über 3000 Jahre alt war.",
-      "Ein Blitz ist etwa fünfmal heißer als die Oberfläche der Sonne.",
-      "Bananen sind Beeren, Erdbeeren botanisch gesehen nicht.",
-      "Der Eiffelturm wird im Sommer durch Hitze bis zu 15 cm größer.",
-      "Delfine geben sich gegenseitig Namen in Form individueller Pfeiflaute.",
-      "Ein Tag auf der Venus dauert länger als ein Jahr auf der Venus.",
-      "Katzen können über 100 verschiedene Laute machen, Hunde nur etwa 10.",
-      "Wenn man aufeinander zuläuft, klingt es wie ein Herzschlag – Synchronisation liegt uns im Blut.",
-      "Der kürzeste Krieg der Geschichte dauerte nur 38 Minuten (Sansibar, 1896).",
-      "Rote Rosen bedeuten Liebe, gelbe eigentlich traditionell Freundschaft.",
-      "Menschen sind die einzigen Tiere, die vor Rührung weinen.",
-      "Ein Schneckenrennen wäre schnell entschieden – trotzdem legt eine Schnecke nur etwa 1 mm pro Sekunde zurück.",
-      "Die Chance, mit dem exakt gleichen Menschen zwei verschiedene Fingerabdrücke zu teilen, ist praktisch null.",
-      "Regenwürmer haben fünf Herzen.",
-      "Der Klang eines Kusses entsteht durch ein kleines Vakuum zwischen den Lippen.",
-      "Wenn man sich in die Augen schaut, synchronisieren sich oft auch die Atemzüge.",
-      "Ein Regenbogen ist eigentlich ein voller Kreis – vom Boden aus sehen wir nur die Hälfte.",
-      "Das höchste Gebäude der Welt, der Burj Khalifa, ist über 828 Meter hoch.",
-      "Zugvögel wie Kraniche bleiben oft ein Leben lang mit demselben Partner zusammen.",
-      "Der Mond entfernt sich jedes Jahr etwa 3,8 cm weiter von der Erde.",
-      "Ein Krokodil kann seine Zunge nicht herausstrecken.",
-      "Beim Verliebtsein schüttet das Gehirn ähnliche Stoffe aus wie bei Schokolade.",
-      "Papageien können sich gegenseitig mit selbst erfundenen Kosenamen rufen.",
-      "Ein Tintenfisch kann seine Farbe schneller wechseln als ein Chamäleon.",
-      "Am längsten Tag des Jahres (21. Juni) geht die Sonne in Norwegen gar nicht unter.",
-      "Der Klang eines Herzschlags kann sich bei zwei sich nahestehenden Menschen im Schlaf angleichen."
-    ];
-
     var ZIEL_DATUM = new Date("2027-07-08T00:00:00");
     var START_DATUM = new Date("2026-02-01T00:00:00");
 
@@ -532,12 +499,75 @@
 
     function oeffneGeschenk() {
       var heute = heutigesDatumSchluessel();
-      var fakt = ZUFALLSFAKTEN[Math.floor(Math.random() * ZUFALLSFAKTEN.length)];
-      document.getElementById('fakt-text').innerText = fakt;
+      document.getElementById('fakt-text').innerText = 'Lädt...';
       document.getElementById('fakt-overlay').classList.remove('hidden');
       document.getElementById('geschenk-icon').classList.add('hidden');
       localStorage.setItem('geschenkGesehen_' + heute, '1');
       zeigeKonfetti();
+
+      generiereAppFakten().then(function (fakten) {
+        var fakt = fakten[Math.floor(Math.random() * fakten.length)];
+        document.getElementById('fakt-text').innerText = fakt;
+      });
+    }
+
+    async function generiereAppFakten() {
+      var fakten = [];
+
+      var snapshot = await getDocs(collection(db, 'abstimmung'));
+      var beantwortet = 0, einigkeit = 0;
+      var w = { leonFuerLeon: 0, leonFuerLotta: 0, lottaFuerLeon: 0, lottaFuerLotta: 0 };
+      snapshot.forEach(function (docSnap) {
+        var d = docSnap.data();
+        if (d.leon === 'Leon') w.leonFuerLeon++; else if (d.leon === 'Lotta') w.leonFuerLotta++;
+        if (d.lotta === 'Leon') w.lottaFuerLeon++; else if (d.lotta === 'Lotta') w.lottaFuerLotta++;
+        if (d.leon && d.lotta) {
+          beantwortet++;
+          if (d.leon === d.lotta) einigkeit++;
+        }
+      });
+
+      if (beantwortet > 0) {
+        var prozentEinig = Math.round((einigkeit / beantwortet) * 100);
+        fakten.push('📊 Ihr habt schon ' + beantwortet + (beantwortet === 1 ? ' Frage' : ' Fragen') + ' gemeinsam beantwortet!');
+        fakten.push('🤝 Bei ' + prozentEinig + '% eurer Abstimmungen wart ihr euch einig!');
+      }
+
+      var leonGesamt = w.leonFuerLeon + w.leonFuerLotta;
+      var lottaGesamt = w.lottaFuerLeon + w.lottaFuerLotta;
+      if (leonGesamt > 0) {
+        var leonFavorit = w.leonFuerLeon >= w.leonFuerLotta ? 'sich selbst' : 'Lotta';
+        fakten.push('🗳️ Leon stimmt am häufigsten für ' + leonFavorit + '.');
+      }
+      if (lottaGesamt > 0) {
+        var lottaFavorit = w.lottaFuerLotta >= w.lottaFuerLeon ? 'sich selbst' : 'Leon';
+        fakten.push('🗳️ Lotta stimmt am häufigsten für ' + lottaFavorit + '.');
+      }
+
+      var streak = await getStreak();
+      if (streak > 0) {
+        fakten.push('🔥 Ihr seid gerade ' + streak + (streak === 1 ? ' Tag' : ' Tage') + ' am Stück am Abstimmen!');
+      }
+
+      var gLeonSnap = await getDoc(doc(db, 'einstellungen', 'gedankeAnzahl_leon'));
+      var gLottaSnap = await getDoc(doc(db, 'einstellungen', 'gedankeAnzahl_lotta'));
+      var gLeon = gLeonSnap.exists() ? (gLeonSnap.data().anzahl || 0) : 0;
+      var gLotta = gLottaSnap.exists() ? (gLottaSnap.data().anzahl || 0) : 0;
+      if (gLeon > 0 || gLotta > 0) {
+        fakten.push('❤️ "Ich denk an dich" wurde schon ' + (gLeon + gLotta) + 'x gedrückt (Leon ' + gLeon + 'x, Lotta ' + gLotta + 'x).');
+      }
+
+      var briefeSnapshot = await getDocs(collection(db, 'briefe'));
+      var briefeAnzahl = briefeSnapshot.size;
+      if (briefeAnzahl > 0) {
+        fakten.push('💌 Ihr habt euch schon ' + briefeAnzahl + (briefeAnzahl === 1 ? ' Nachricht' : ' Nachrichten') + ' im Brief-Fach geschrieben!');
+      }
+
+      if (fakten.length === 0) {
+        fakten.push('🌱 Eure gemeinsame Statistik startet gerade erst – stimmt heute ab, um die erste Zahl zu sammeln!');
+      }
+
+      return fakten;
     }
 
     document.getElementById('geschenk-icon').addEventListener('click', oeffneGeschenk);
@@ -593,7 +623,7 @@
       }
       else if (heutigesDatumSchluessel() === '2026-09-14') {
         box.classList.add('spezialtag-unterrichtsbesuch');
-        zeigeSpezialtagText('spezialtag-unterrichtsbesuch', '🍀 Heute drücken wir die Daumen für den Unterrichtsbesuch!');
+        zeigeSpezialtagText('spezialtag-unterrichtsbesuch', '🍀 Ich drücke dir die Daumen für den Unterrichtsbesuch! Du schaffst das!');
       }
       else if (wochentag === 0 || wochentag === 6) { box.classList.add('wochenende'); }
     }
