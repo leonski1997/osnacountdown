@@ -1,4 +1,35 @@
-// Minimaler Service Worker - macht die Seite als "echte" App installierbar.
+// Minimaler Service Worker - macht die Seite als "echte" App installierbar,
+// und empfängt zusätzlich Push-Benachrichtigungen im Hintergrund (FCM).
+
+importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyCj8vSVvdpFW4XxoDHxaNycbhb5-CbrbMQ",
+  authDomain: "osnacountdown.firebaseapp.com",
+  projectId: "osnacountdown",
+  storageBucket: "osnacountdown.firebasestorage.app",
+  messagingSenderId: "643165169880",
+  appId: "1:643165169880:web:f4c5c3173a01fc75f50fad"
+});
+
+var messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(function (payload) {
+  var titel = (payload.notification && payload.notification.title) || 'Wieder in Osnabrück';
+  var optionen = {
+    body: (payload.notification && payload.notification.body) || '',
+    icon: '/icon.svg',
+    data: payload.data || {}
+  };
+  self.registration.showNotification(titel, optionen);
+});
+
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  e.waitUntil(clients.openWindow('/'));
+});
+
 self.addEventListener('install', function (e) {
   self.skipWaiting();
 });
