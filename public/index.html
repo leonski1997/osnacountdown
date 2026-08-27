@@ -14,12 +14,14 @@
       --text: #2d4a35; --accent-bg: #2d4a35;
       --card: rgba(255,255,255,0.85); --card-strong: rgba(255,255,255,0.92);
       --shadow-soft: rgba(45,74,53,0.2);
+      --statistik-zahl: #2d4a35;
     }
     body.dark {
       --bg-start: #16261b; --bg-end: #0a120c;
       --text: #d7ead9; --accent-bg: #3f6b4c;
       --card: rgba(25,42,30,0.75); --card-strong: rgba(25,42,30,0.85);
       --shadow-soft: rgba(0,0,0,0.4);
+      --statistik-zahl: #8fe0ac;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
@@ -191,7 +193,7 @@
     .statistik-zahl-gross { font-size: 2.6em; font-weight: bold; margin: 0; }
     .statistik-zeile { display: flex; justify-content: space-between; padding: 8px 2px; border-bottom: 1px solid var(--shadow-soft); font-size: 0.95em; }
     .statistik-zeile:last-child { border-bottom: none; }
-    .statistik-zeile b { color: var(--accent-bg); }
+    .statistik-zeile b { color: var(--statistik-zahl); }
 
     .historie-monat { font-weight: bold; margin: 16px 0 6px 0; cursor: pointer; }
     .historie-eintrag { padding: 6px 0; border-bottom: 1px solid rgba(150,150,150,0.2); font-size: 0.9em; text-align: left; }
@@ -1283,6 +1285,7 @@
   </script>
 </body>
 </html>
+
 
 
 
