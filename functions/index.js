@@ -217,3 +217,33 @@ exports.migriereAlteDaten = onRequest(async (req, res) => {
     "Denk-an-dich-Zähler erhöht: +" + ALTE_DATEN.gedankeLeon + " (Leon), +" + ALTE_DATEN.gedankeLotta + " (Lotta)"
   );
 });
+
+
+// ============================================================================
+// EINMALIGE AUFRÄUM-FUNKTION: löscht Leons letzte 2 "Test"-Nachrichten im
+// Brief-Fach. Kann nach Gebrauch wieder aus der Datei entfernt werden.
+// ============================================================================
+exports.loescheTestNachrichten = onRequest(async (req, res) => {
+  const SCHLUESSEL = "osna-cleanup-2026";
+  if (req.query.schluessel !== SCHLUESSEL) {
+    res.status(403).send("Falscher oder fehlender Schlüssel.");
+    return;
+  }
+
+  const snapshot = await db.collection("briefe")
+    .where("von", "==", "leon")
+    .where("text", "==", "Test")
+    .get();
+
+  var kandidaten = snapshot.docs.slice();
+  kandidaten.sort(function (a, b) { return b.data().zeitstempel - a.data().zeitstempel; });
+  kandidaten = kandidaten.slice(0, 2);
+
+  var geloescht = 0;
+  for (const doc of kandidaten) {
+    await doc.ref.delete();
+    geloescht++;
+  }
+
+  res.status(200).send("Gelöscht: " + geloescht + " Nachricht(en) mit Text 'Test' von Leon.");
+});
