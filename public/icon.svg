@@ -1,4 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <rect width="100" height="100" rx="20" fill="#2d4a35"/>
-  <text x="50" y="68" font-size="55" text-anchor="middle">❤️</text>
+
+  <!-- Sanduhr (links) -->
+  <g transform="translate(12,20) scale(0.9)">
+    <path d="M2,4 L38,4 L20,28 L38,52 L2,52 L20,28 Z" fill="#ffffff"/>
+  </g>
+
+  <!-- Herz (rechts) -->
+  <g transform="translate(52,30) scale(0.9)">
+    <path d="M20,36 C20,36 2,22 2,10 C2,4 7,0 12,0 C16,0 19,3 20,6 C21,3 24,0 28,0 C33,0 38,4 38,10 C38,22 20,36 20,36 Z" fill="#ffffff"/>
+  </g>
 </svg>
