@@ -16,11 +16,12 @@ firebase.initializeApp({
 var messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function (payload) {
-  var titel = (payload.notification && payload.notification.title) || 'Wieder in Osnabrück';
+  var daten = payload.data || {};
+  var titel = daten.titel || 'Wieder in Osnabrück';
   var optionen = {
-    body: (payload.notification && payload.notification.body) || '',
+    body: daten.body || '',
     icon: '/icon.svg',
-    data: payload.data || {}
+    data: daten
   };
   self.registration.showNotification(titel, optionen);
 });
@@ -40,3 +41,4 @@ self.addEventListener('fetch', function (e) {
   // Einfach normal durchreichen - keine echte Offline-Funktion nötig für den Anfang.
   e.respondWith(fetch(e.request));
 });
+
