@@ -28,10 +28,11 @@ jobs:
       - name: Functions bereitstellen
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
-        run: firebase deploy --only functions --project osnacountdown --non-interactive
+        run: firebase deploy --only functions --project osnacountdown --non-interactive --force
 
       - name: Hosting bereitstellen
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-key.json
         run: firebase deploy --only hosting --project osnacountdown --non-interactive
+
 
