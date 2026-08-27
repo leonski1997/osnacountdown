@@ -333,7 +333,8 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, getDocs, addDoc, query, orderBy, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
 
     const firebaseConfig = window.__FIREBASE_CONFIG__ || { projectId: "osnacountdown" };
 
@@ -358,6 +359,39 @@
       }
       if (user) { pruefeGedanke(); }
     });
+
+    // ---------------------------------------------------------------------
+    // Push-Benachrichtigungen (Firebase Cloud Messaging)
+    // ---------------------------------------------------------------------
+    var VAPID_KEY = "BP2HmjPwwU0Bv03O7kqo2sJTKixLqLejM48_yKYsefw_UBWlogBBykQ1QMLJSVdEZe9BGsFYNxpdraDRthQoqJM";
+    var benachrichtigungenEingerichtet = false;
+
+    async function aktiviereBenachrichtigungen() {
+      if (benachrichtigungenEingerichtet || !meinUser) return;
+      if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+      if (Notification.permission === 'denied') return;
+
+      try {
+        var registrierung = await navigator.serviceWorker.register('service-worker.js');
+        var erlaubnis = await Notification.requestPermission();
+        if (erlaubnis !== 'granted') return;
+
+        var messaging = getMessaging(app);
+        var token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registrierung });
+        if (token) {
+          await setDoc(doc(db, 'push_tokens', meinUser), { tokens: arrayUnion(token) }, { merge: true });
+          benachrichtigungenEingerichtet = true;
+        }
+
+        onMessage(messaging, function (payload) {
+          var titel = (payload.notification && payload.notification.title) || 'Wieder in Osnabrück';
+          var body = (payload.notification && payload.notification.body) || '';
+          zeigeGedankeToast('🔔 ' + titel + (body ? ': ' + body : ''));
+        });
+      } catch (e) {
+        console.error('Push-Benachrichtigungen konnten nicht eingerichtet werden:', e);
+      }
+    }
 
     var urlParams = new URLSearchParams(window.location.search);
     var meinUser = urlParams.get('user') || localStorage.getItem('meinUser') || null;
@@ -391,6 +425,7 @@
       if (nav) nav.classList.remove('hidden');
       zeigeScreen('countdown');
       pruefeEasterEgg();
+      aktiviereBenachrichtigungen();
     }
 
     document.getElementById('identitaet-leon-button').addEventListener('click', () => setzeIdentitaet('leon'));
