@@ -202,6 +202,7 @@
     .brief-blase {
       max-width: 75%; padding: 8px 12px; border-radius: 12px; margin: 6px 0;
       font-size: 0.95em; word-wrap: break-word;
+      user-select: none; -webkit-user-select: none; touch-action: manipulation; cursor: pointer;
     }
     .brief-eigen { background: var(--accent-bg); color: white; margin-left: auto; }
     .brief-partner { background: rgba(150,150,150,0.25); }
@@ -282,6 +283,14 @@
     </div>
   </div>
 
+  <div id="brief-loeschen-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:4000;">
+    <div class="box">
+      <p>Diese Nachricht wirklich löschen?</p>
+      <button class="frage-button" id="brief-loeschen-ja-button">Ja, löschen</button>
+      <button class="frage-button" id="brief-loeschen-nein-button" style="background:#888;">Abbrechen</button>
+    </div>
+  </div>
+
   <div id="screen-abstimmung" class="screen hidden">
     <div class="box">
       <div id="abstimmung-inhalt"><p>Lädt...</p></div>
@@ -333,7 +342,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, getDocs, addDoc, query, orderBy, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, collection, getDocs, addDoc, query, orderBy, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
     import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
 
     const firebaseConfig = window.__FIREBASE_CONFIG__ || { projectId: "osnacountdown" };
@@ -1086,13 +1095,58 @@
         var eigen = d.von === meinUser;
         var datum = new Date(d.zeitstempel);
         var zeitText = datum.toLocaleDateString('de-DE') + ' ' + datum.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-        html += '<div class="brief-blase ' + (eigen ? 'brief-eigen' : 'brief-partner') + '">' +
+        html += '<div class="brief-blase ' + (eigen ? 'brief-eigen' : 'brief-partner') + '" data-brief-id="' + docSnap.id + '">' +
           escapeHtml(d.text) + '<div class="brief-zeit">' + zeitText + '</div></div>';
       });
 
       container.innerHTML = html || '<p style="text-align:center;">Noch keine Nachrichten.</p>';
       container.scrollTop = container.scrollHeight;
+      aktiviereBriefLongPress();
     }
+
+    // ---------- Nachricht per Long-Press löschen ----------
+    var LONG_PRESS_DAUER_MS = 550;
+
+    function aktiviereBriefLongPress() {
+      var blasen = document.querySelectorAll('.brief-blase[data-brief-id]');
+      blasen.forEach(function (blase) {
+        var timer = null;
+        var startEvent = function () {
+          timer = setTimeout(function () {
+            timer = null;
+            if (navigator.vibrate) navigator.vibrate(35);
+            zeigeBriefLoeschenDialog(blase.getAttribute('data-brief-id'));
+          }, LONG_PRESS_DAUER_MS);
+        };
+        var abbrechenEvent = function () {
+          if (timer) { clearTimeout(timer); timer = null; }
+        };
+        blase.addEventListener('pointerdown', startEvent);
+        blase.addEventListener('pointerup', abbrechenEvent);
+        blase.addEventListener('pointerleave', abbrechenEvent);
+        blase.addEventListener('pointercancel', abbrechenEvent);
+        blase.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      });
+    }
+
+    var briefZumLoeschenId = null;
+
+    function zeigeBriefLoeschenDialog(briefId) {
+      briefZumLoeschenId = briefId;
+      document.getElementById('brief-loeschen-overlay').classList.remove('hidden');
+    }
+
+    document.getElementById('brief-loeschen-ja-button').addEventListener('click', async function () {
+      document.getElementById('brief-loeschen-overlay').classList.add('hidden');
+      if (!briefZumLoeschenId) return;
+      await deleteDoc(doc(db, 'briefe', briefZumLoeschenId));
+      briefZumLoeschenId = null;
+      ladeBriefe();
+    });
+    document.getElementById('brief-loeschen-nein-button').addEventListener('click', function () {
+      document.getElementById('brief-loeschen-overlay').classList.add('hidden');
+      briefZumLoeschenId = null;
+    });
 
     function escapeHtml(text) {
       var div = document.createElement('div');
@@ -1227,5 +1281,6 @@
   </script>
 </body>
 </html>
+
 
 
