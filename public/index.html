@@ -39,13 +39,13 @@
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: safe center;
       align-items: center;
-      padding: 20px 20px 90px 20px;
+      padding: 80px 20px 90px 20px;
       box-sizing: border-box;
     }
     #screen-countdown {
-      justify-content: flex-end;
+      justify-content: safe flex-end;
       padding-bottom: 115px;
     }
     .box {
@@ -275,7 +275,7 @@
     </div>
   </div>
 
-  <div id="bestaetigung-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:4000;">
+  <div id="bestaetigung-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:safe center; justify-content:safe center; z-index:4000; overflow-y:auto;">
     <div class="box">
       <p>Willst du deine heutige Antwort wirklich zurücksetzen?</p>
       <button class="frage-button" id="bestaetigung-ja-button">Ja, zurücksetzen</button>
@@ -283,7 +283,7 @@
     </div>
   </div>
 
-  <div id="brief-loeschen-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:4000;">
+  <div id="brief-loeschen-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:safe center; justify-content:safe center; z-index:4000; overflow-y:auto;">
     <div class="box">
       <p>Diese Nachricht wirklich löschen?</p>
       <button class="frage-button" id="brief-loeschen-ja-button">Ja, löschen</button>
@@ -1281,6 +1281,7 @@
   </script>
 </body>
 </html>
+
 
 
 
