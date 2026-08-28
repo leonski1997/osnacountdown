@@ -47,11 +47,18 @@
       box-sizing: border-box;
     }
     .screen.screen-eintritt {
-      animation: screen-einblenden 0.32s ease;
+      animation: screen-einblenden 0.38s cubic-bezier(0.22, 1, 0.36, 1);
     }
     @keyframes screen-einblenden {
-      from { opacity: 0; transform: translateY(14px); }
+      from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+    .screen.screen-ausblenden {
+      animation: screen-ausblenden 0.16s ease forwards;
+    }
+    @keyframes screen-ausblenden {
+      from { opacity: 1; }
+      to { opacity: 0; }
     }
     .box {
       background: var(--card);
@@ -1297,19 +1304,38 @@
 
     setInterval(function () { sendeHerzschlag(); pruefeOnlineStatus(); }, 30000);
 
+    var BILDSCHIRM_NAMEN = ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik'];
+
     function zeigeScreen(name) {
-      ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik'].forEach(function (n) {
+      var aktuellSichtbar = null;
+      BILDSCHIRM_NAMEN.forEach(function (n) {
         var el = document.getElementById('screen-' + n);
-        var warVersteckt = el.classList.contains('hidden');
-        el.classList.toggle('hidden', n !== name);
-        if (n === name && warVersteckt) {
-          el.classList.remove('screen-eintritt');
-          void el.offsetWidth; // Reflow erzwingen, damit die Animation garantiert neu startet
-          el.classList.add('screen-eintritt');
-        }
-        var navItem = document.getElementById('nav-' + n);
-        if (navItem) navItem.classList.toggle('aktiv', n === name || (name === 'historie' && n === 'abstimmung') || (name === 'statistik' && n === 'abstimmung'));
+        if (!el.classList.contains('hidden')) aktuellSichtbar = el;
       });
+      var zielEl = document.getElementById('screen-' + name);
+
+      function wechsleJetzt() {
+        BILDSCHIRM_NAMEN.forEach(function (n) {
+          var el = document.getElementById('screen-' + n);
+          el.classList.toggle('hidden', n !== name);
+          var navItem = document.getElementById('nav-' + n);
+          if (navItem) navItem.classList.toggle('aktiv', n === name || (name === 'historie' && n === 'abstimmung') || (name === 'statistik' && n === 'abstimmung'));
+        });
+        window.scrollTo(0, 0);
+        zielEl.classList.remove('screen-eintritt');
+        void zielEl.offsetWidth; // Reflow erzwingen, damit die Animation garantiert neu startet
+        zielEl.classList.add('screen-eintritt');
+      }
+
+      if (aktuellSichtbar && aktuellSichtbar !== zielEl) {
+        aktuellSichtbar.classList.add('screen-ausblenden');
+        setTimeout(function () {
+          aktuellSichtbar.classList.remove('screen-ausblenden');
+          wechsleJetzt();
+        }, 150);
+      } else {
+        wechsleJetzt();
+      }
     }
     document.getElementById('nav-countdown').addEventListener('click', () => zeigeScreen('countdown'));
     document.getElementById('nav-abstimmung').addEventListener('click', () => { zeigeScreen('abstimmung'); ladeAbstimmung(); });
@@ -1355,6 +1381,7 @@
   </script>
 </body>
 </html>
+
 
 
 
