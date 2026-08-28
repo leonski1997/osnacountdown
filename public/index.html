@@ -370,6 +370,30 @@
     const db = getFirestore(app);
     var istAngemeldet = false;
 
+    // WICHTIG: Diese Funktion muss ganz oben stehen, weil sie schon beim allerersten
+    // Laden der Seite aufgerufen wird (siehe weiter unten) - definiert VOR ihrer
+    // ersten Verwendung, damit kein "undefined"-Fehler auftritt.
+    var BILDSCHIRM_NAMEN = ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik'];
+
+    function zeigeScreen(name) {
+      var zielEl = document.getElementById('screen-' + name);
+      var warVersteckt = zielEl.classList.contains('hidden');
+
+      BILDSCHIRM_NAMEN.forEach(function (n) {
+        var el = document.getElementById('screen-' + n);
+        el.classList.toggle('hidden', n !== name);
+        var navItem = document.getElementById('nav-' + n);
+        if (navItem) navItem.classList.toggle('aktiv', n === name || (name === 'historie' && n === 'abstimmung') || (name === 'statistik' && n === 'abstimmung'));
+      });
+      window.scrollTo(0, 0);
+
+      if (warVersteckt) {
+        zielEl.classList.remove('screen-eintritt');
+        void zielEl.offsetWidth; // Reflow erzwingen, damit die Animation garantiert neu startet
+        zielEl.classList.add('screen-eintritt');
+      }
+    }
+
     var anmeldungFehlgeschlagen = false;
     signInAnonymously(auth).catch(function (e) {
       console.error('Anmeldung fehlgeschlagen:', e);
@@ -1297,26 +1321,8 @@
 
     setInterval(function () { sendeHerzschlag(); pruefeOnlineStatus(); }, 30000);
 
-    var BILDSCHIRM_NAMEN = ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik'];
 
-    function zeigeScreen(name) {
-      var zielEl = document.getElementById('screen-' + name);
-      var warVersteckt = zielEl.classList.contains('hidden');
 
-      BILDSCHIRM_NAMEN.forEach(function (n) {
-        var el = document.getElementById('screen-' + n);
-        el.classList.toggle('hidden', n !== name);
-        var navItem = document.getElementById('nav-' + n);
-        if (navItem) navItem.classList.toggle('aktiv', n === name || (name === 'historie' && n === 'abstimmung') || (name === 'statistik' && n === 'abstimmung'));
-      });
-      window.scrollTo(0, 0);
-
-      if (warVersteckt) {
-        zielEl.classList.remove('screen-eintritt');
-        void zielEl.offsetWidth; // Reflow erzwingen, damit die Animation garantiert neu startet
-        zielEl.classList.add('screen-eintritt');
-      }
-    }
     document.getElementById('nav-countdown').addEventListener('click', () => zeigeScreen('countdown'));
     document.getElementById('nav-abstimmung').addEventListener('click', () => { zeigeScreen('abstimmung'); ladeAbstimmung(); });
     document.getElementById('nav-briefe').addEventListener('click', () => { zeigeScreen('briefe'); ladeBriefe(); });
@@ -1361,6 +1367,7 @@
   </script>
 </body>
 </html>
+
 
 
 
