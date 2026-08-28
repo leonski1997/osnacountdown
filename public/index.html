@@ -46,6 +46,13 @@
       padding: 80px 20px 110px 20px;
       box-sizing: border-box;
     }
+    .screen.screen-eintritt {
+      animation: screen-einblenden 0.32s ease;
+    }
+    @keyframes screen-einblenden {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .box {
       background: var(--card);
       padding: 24px 30px;
@@ -207,6 +214,11 @@
     .brief-eigen { background: var(--accent-bg); color: white; margin-left: auto; }
     .brief-partner { background: rgba(150,150,150,0.25); }
     .brief-zeit { font-size: 0.7em; opacity: 0.7; margin-top: 2px; }
+    .brief-reaktionen {
+      font-size: 0.85em; margin: -2px 0 8px 4px; opacity: 0.9;
+    }
+    .brief-partner + .brief-reaktionen { text-align: left; }
+    .brief-eigen + .brief-reaktionen { text-align: right; margin-right: 4px; }
 
     #gedanke-toast {
       position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
@@ -283,11 +295,17 @@
     </div>
   </div>
 
-  <div id="brief-loeschen-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:safe center; justify-content:safe center; z-index:4000; overflow-y:auto;">
-    <div class="box">
-      <p>Diese Nachricht wirklich löschen?</p>
-      <button class="frage-button" id="brief-loeschen-ja-button">Ja, löschen</button>
-      <button class="frage-button" id="brief-loeschen-nein-button" style="background:#888;">Abbrechen</button>
+  <div id="brief-menu-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:safe center; justify-content:safe center; z-index:4000; overflow-y:auto;">
+    <div class="box" style="min-width:240px;">
+      <div id="brief-menu-emojis" style="display:flex; justify-content:space-around; gap:6px; margin-bottom:14px; font-size:1.8em;">
+        <span class="brief-emoji-wahl" data-emoji="❤️" style="cursor:pointer;">❤️</span>
+        <span class="brief-emoji-wahl" data-emoji="😂" style="cursor:pointer;">😂</span>
+        <span class="brief-emoji-wahl" data-emoji="😮" style="cursor:pointer;">😮</span>
+        <span class="brief-emoji-wahl" data-emoji="👍" style="cursor:pointer;">👍</span>
+      </div>
+      <hr style="border:none; border-top:1px solid rgba(150,150,150,0.3); margin:10px 0;">
+      <button class="frage-button" id="brief-loeschen-ja-button">🗑️ Löschen</button>
+      <button class="frage-button" id="brief-menu-abbrechen-button" style="background:#888;">Abbrechen</button>
     </div>
   </div>
 
@@ -1100,8 +1118,20 @@
         var eigen = d.von === meinUser;
         var datum = new Date(d.zeitstempel);
         var zeitText = datum.toLocaleDateString('de-DE') + ' ' + datum.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+        var reaktionenHtml = '';
+        if (d.reaktionen) {
+          var teile = [];
+          if (d.reaktionen.leon) teile.push(d.reaktionen.leon);
+          if (d.reaktionen.lotta) teile.push(d.reaktionen.lotta);
+          if (teile.length > 0) {
+            reaktionenHtml = '<div class="brief-reaktionen">' + teile.join(' ') + '</div>';
+          }
+        }
+
         html += '<div class="brief-blase ' + (eigen ? 'brief-eigen' : 'brief-partner') + '" data-brief-id="' + docSnap.id + '">' +
-          escapeHtml(d.text) + '<div class="brief-zeit">' + zeitText + '</div></div>';
+          escapeHtml(d.text) + '<div class="brief-zeit">' + zeitText + '</div></div>' +
+          reaktionenHtml;
       });
 
       container.innerHTML = html || '<p style="text-align:center;">Noch keine Nachrichten.</p>';
@@ -1109,7 +1139,7 @@
       aktiviereBriefLongPress();
     }
 
-    // ---------- Nachricht per Long-Press löschen ----------
+    // ---------- Nachricht per Long-Press: Reagieren oder Löschen ----------
     var LONG_PRESS_DAUER_MS = 550;
 
     function aktiviereBriefLongPress() {
@@ -1120,7 +1150,7 @@
           timer = setTimeout(function () {
             timer = null;
             if (navigator.vibrate) navigator.vibrate(35);
-            zeigeBriefLoeschenDialog(blase.getAttribute('data-brief-id'));
+            zeigeBriefMenu(blase.getAttribute('data-brief-id'));
           }, LONG_PRESS_DAUER_MS);
         };
         var abbrechenEvent = function () {
@@ -1136,20 +1166,43 @@
 
     var briefZumLoeschenId = null;
 
-    function zeigeBriefLoeschenDialog(briefId) {
+    function zeigeBriefMenu(briefId) {
       briefZumLoeschenId = briefId;
-      document.getElementById('brief-loeschen-overlay').classList.remove('hidden');
+      document.getElementById('brief-menu-overlay').classList.remove('hidden');
     }
 
+    document.querySelectorAll('.brief-emoji-wahl').forEach(function (span) {
+      span.addEventListener('click', async function () {
+        if (!briefZumLoeschenId || !meinUser) return;
+        var emoji = span.getAttribute('data-emoji');
+        var briefRef = doc(db, 'briefe', briefZumLoeschenId);
+        var snap = await getDoc(briefRef);
+        var bisherigeReaktion = snap.exists() && snap.data().reaktionen ? snap.data().reaktionen[meinUser] : null;
+
+        var updateDaten = {};
+        if (bisherigeReaktion === emoji) {
+          // Nochmal dasselbe Emoji angetippt -> Reaktion wieder entfernen
+          updateDaten['reaktionen.' + meinUser] = deleteField();
+        } else {
+          updateDaten['reaktionen.' + meinUser] = emoji;
+        }
+        await updateDoc(briefRef, updateDaten);
+
+        document.getElementById('brief-menu-overlay').classList.add('hidden');
+        briefZumLoeschenId = null;
+        ladeBriefe();
+      });
+    });
+
     document.getElementById('brief-loeschen-ja-button').addEventListener('click', async function () {
-      document.getElementById('brief-loeschen-overlay').classList.add('hidden');
+      document.getElementById('brief-menu-overlay').classList.add('hidden');
       if (!briefZumLoeschenId) return;
       await deleteDoc(doc(db, 'briefe', briefZumLoeschenId));
       briefZumLoeschenId = null;
       ladeBriefe();
     });
-    document.getElementById('brief-loeschen-nein-button').addEventListener('click', function () {
-      document.getElementById('brief-loeschen-overlay').classList.add('hidden');
+    document.getElementById('brief-menu-abbrechen-button').addEventListener('click', function () {
+      document.getElementById('brief-menu-overlay').classList.add('hidden');
       briefZumLoeschenId = null;
     });
 
@@ -1246,7 +1299,14 @@
 
     function zeigeScreen(name) {
       ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik'].forEach(function (n) {
-        document.getElementById('screen-' + n).classList.toggle('hidden', n !== name);
+        var el = document.getElementById('screen-' + n);
+        var warVersteckt = el.classList.contains('hidden');
+        el.classList.toggle('hidden', n !== name);
+        if (n === name && warVersteckt) {
+          el.classList.remove('screen-eintritt');
+          void el.offsetWidth; // Reflow erzwingen, damit die Animation garantiert neu startet
+          el.classList.add('screen-eintritt');
+        }
         var navItem = document.getElementById('nav-' + n);
         if (navItem) navItem.classList.toggle('aktiv', n === name || (name === 'historie' && n === 'abstimmung') || (name === 'statistik' && n === 'abstimmung'));
       });
@@ -1295,6 +1355,7 @@
   </script>
 </body>
 </html>
+
 
 
 
