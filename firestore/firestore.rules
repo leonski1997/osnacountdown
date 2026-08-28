@@ -12,8 +12,9 @@ service cloud.firestore {
         && (!('lotta' in request.resource.data) || request.resource.data.lotta in ['Leon', 'Lotta']);
     }
 
-    // Brief-Fach: nur "leon"/"lotta" als Absender, Text begrenzt auf 2000 Zeichen,
-    // bestehende Nachrichten können nicht nachträglich verändert werden (nur gelöscht).
+    // Brief-Fach: nur "leon"/"lotta" als Absender, Text begrenzt auf 2000 Zeichen.
+    // Bestehende Nachrichten können nur in einem Punkt nachträglich geändert werden:
+    // den Reaktionen (Emoji-Reaktionen von Leon/Lotta) - Text/Absender/Zeit bleiben fix.
     match /briefe/{briefId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
@@ -22,7 +23,14 @@ service cloud.firestore {
         && request.resource.data.text.size() <= 2000
         && request.resource.data.zeitstempel is int;
       allow delete: if request.auth != null;
-      allow update: if false;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reaktionen'])
+        && request.resource.data.text == resource.data.text
+        && request.resource.data.von == resource.data.von
+        && request.resource.data.zeitstempel == resource.data.zeitstempel
+        && request.resource.data.reaktionen.keys().hasOnly(['leon', 'lotta'])
+        && (!('leon' in request.resource.data.reaktionen) || request.resource.data.reaktionen.leon in ['❤️', '😂', '😮', '👍'])
+        && (!('lotta' in request.resource.data.reaktionen) || request.resource.data.reaktionen.lotta in ['❤️', '😂', '😮', '👍']);
     }
 
     // Einstellungen (Denk-an-dich-Zähler, letzter Gedanke usw.)
@@ -43,3 +51,4 @@ service cloud.firestore {
     }
   }
 }
+
