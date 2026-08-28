@@ -46,13 +46,6 @@
       padding: 80px 20px 110px 20px;
       box-sizing: border-box;
     }
-    .screen.screen-eintritt {
-      animation: screen-einblenden 0.38s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    @keyframes screen-einblenden {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
     .box {
       background: var(--card);
       padding: 24px 30px;
@@ -376,22 +369,12 @@
     var BILDSCHIRM_NAMEN = ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik'];
 
     function zeigeScreen(name) {
-      var zielEl = document.getElementById('screen-' + name);
-      var warVersteckt = zielEl.classList.contains('hidden');
-
       BILDSCHIRM_NAMEN.forEach(function (n) {
         var el = document.getElementById('screen-' + n);
         el.classList.toggle('hidden', n !== name);
         var navItem = document.getElementById('nav-' + n);
         if (navItem) navItem.classList.toggle('aktiv', n === name || (name === 'historie' && n === 'abstimmung') || (name === 'statistik' && n === 'abstimmung'));
       });
-      window.scrollTo(0, 0);
-
-      if (warVersteckt) {
-        zielEl.classList.remove('screen-eintritt');
-        void zielEl.offsetWidth; // Reflow erzwingen, damit die Animation garantiert neu startet
-        zielEl.classList.add('screen-eintritt');
-      }
     }
 
     var anmeldungFehlgeschlagen = false;
@@ -1367,6 +1350,7 @@
   </script>
 </body>
 </html>
+
 
 
 
