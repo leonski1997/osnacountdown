@@ -1310,6 +1310,54 @@
     document.getElementById('nav-abstimmung').addEventListener('click', () => { zeigeScreen('abstimmung'); ladeAbstimmung(); });
     document.getElementById('nav-briefe').addEventListener('click', () => { zeigeScreen('briefe'); ladeBriefe(); });
 
+    // ---------- Zwischen Countdown/Frage/Chat wischen ----------
+    var WISCH_REIHENFOLGE = ['countdown', 'abstimmung', 'briefe'];
+    var wischStartX = 0, wischStartY = 0;
+
+    function irgendeinDialogOffen() {
+      var overlays = ['bestaetigung-overlay', 'brief-menu-overlay', 'fakt-overlay'];
+      return overlays.some(function (id) {
+        var el = document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+      });
+    }
+
+    function aktuellerReiterIndex() {
+      for (var i = 0; i < WISCH_REIHENFOLGE.length; i++) {
+        if (!document.getElementById('screen-' + WISCH_REIHENFOLGE[i]).classList.contains('hidden')) return i;
+      }
+      return -1; // z.B. Historie/Statistik - Wischen dort deaktiviert
+    }
+
+    document.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) return;
+      wischStartX = e.touches[0].clientX;
+      wischStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function (e) {
+      if (irgendeinDialogOffen()) return;
+      var index = aktuellerReiterIndex();
+      if (index === -1) return;
+
+      var endX = e.changedTouches[0].clientX;
+      var endY = e.changedTouches[0].clientY;
+      var deltaX = endX - wischStartX;
+      var deltaY = endY - wischStartY;
+
+      // Nur reagieren, wenn deutlich mehr horizontal als vertikal bewegt wurde
+      // (verhindert Konflikte mit normalem Hoch-/Runterscrollen)
+      if (Math.abs(deltaX) < 65 || Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return;
+
+      if (deltaX < 0 && index < WISCH_REIHENFOLGE.length - 1) {
+        // Nach links gewischt -> nächster Reiter
+        document.getElementById('nav-' + WISCH_REIHENFOLGE[index + 1]).click();
+      } else if (deltaX > 0 && index > 0) {
+        // Nach rechts gewischt -> vorheriger Reiter
+        document.getElementById('nav-' + WISCH_REIHENFOLGE[index - 1]).click();
+      }
+    }, { passive: true });
+
     var farbModi = ['system', 'light', 'dark'];
     var aktuellerModus = localStorage.getItem('farbmodus') || 'system';
 
@@ -1350,6 +1398,7 @@
   </script>
 </body>
 </html>
+
 
 
 
