@@ -1,4 +1,5 @@
 const { onDocumentWritten, onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 
@@ -128,4 +129,24 @@ exports.beiNeuerNachrichtBenachrichtigen = onDocumentCreated("briefe/{briefId}",
 
   var vorschau = (daten.text || "").length > 80 ? daten.text.substring(0, 77) + "..." : (daten.text || "");
   await sendeAnNutzer(empfaenger, "Neue Nachricht von " + absenderName, vorschau, { typ: "neue_nachricht" });
+});
+
+
+// ============================================================================
+// EINMALIGE AUFRÄUM-FUNKTION: löscht alle gespeicherten Push-Tokens für einen
+// Nutzer (z.B. um einen alten Test-Token zu entfernen). Danach wieder entfernen.
+// ============================================================================
+exports.loeschePushTokens = onRequest(async (req, res) => {
+  const SCHLUESSEL = "osna-cleanup-2026-v2";
+  if (req.query.schluessel !== SCHLUESSEL) {
+    res.status(403).send("Falscher oder fehlender Schlüssel.");
+    return;
+  }
+  const nutzer = req.query.user;
+  if (nutzer !== "leon" && nutzer !== "lotta") {
+    res.status(400).send("Bitte ?user=leon oder ?user=lotta angeben.");
+    return;
+  }
+  await db.collection("push_tokens").doc(nutzer).delete();
+  res.status(200).send("Push-Tokens für '" + nutzer + "' wurden gelöscht.");
 });
