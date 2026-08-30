@@ -1032,18 +1032,38 @@
         (proMonat[monatSchluessel] = proMonat[monatSchluessel] || []).push(e);
       });
 
+      var monatsSchluessel = Object.keys(proMonat).sort().reverse();
+      var neuesterMonat = monatsSchluessel[0]; // Monat mit den neuesten Einträgen - automatisch offen
+
       var html = '';
-      Object.keys(proMonat).sort().reverse().forEach(function (monatSchluessel) {
+      monatsSchluessel.forEach(function (monatSchluessel) {
         var teile = monatSchluessel.split('-');
         var monatName = MONATS_NAMEN[parseInt(teile[1], 10) - 1] + ' ' + teile[0];
-        html += '<div class="historie-monat">' + monatName + ' (' + proMonat[monatSchluessel].length + ')</div>';
+        var offen = monatSchluessel === neuesterMonat;
+
+        html += '<div class="historie-monat" data-monat="' + monatSchluessel + '" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">' +
+          '<span>' + monatName + ' (' + proMonat[monatSchluessel].length + ')</span>' +
+          '<span class="historie-pfeil">' + (offen ? '▲' : '▼') + '</span></div>';
+        html += '<div class="historie-monat-inhalt" data-monat-inhalt="' + monatSchluessel + '"' + (offen ? '' : ' style="display:none;"') + '>';
         proMonat[monatSchluessel].forEach(function (e) {
           var tag = e.datum.split('-')[2];
           var einig = e.leon === e.lotta;
           html += '<div class="historie-eintrag">' + tag + '.: ' + e.frage + '<br>Leon: ' + e.leon + ' | Lotta: ' + e.lotta + ' ' + (einig ? '🤝' : '😄') + '</div>';
         });
+        html += '</div>';
       });
       container.innerHTML = html;
+
+      document.querySelectorAll('.historie-monat[data-monat]').forEach(function (kopf) {
+        kopf.addEventListener('click', function () {
+          var monat = kopf.getAttribute('data-monat');
+          var inhalt = container.querySelector('[data-monat-inhalt="' + monat + '"]');
+          var pfeil = kopf.querySelector('.historie-pfeil');
+          var geradeOffen = inhalt.style.display !== 'none';
+          inhalt.style.display = geradeOffen ? 'none' : '';
+          pfeil.textContent = geradeOffen ? '▼' : '▲';
+        });
+      });
     }
 
     document.getElementById('link-historie').addEventListener('click', zeigeHistorie);
@@ -1443,6 +1463,7 @@
   </script>
 </body>
 </html>
+
 
 
 
