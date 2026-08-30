@@ -353,7 +353,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, collection, getDocs, addDoc, query, orderBy, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, collection, getDocs, addDoc, query, orderBy, limit, startAfter, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
     import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
 
     const firebaseConfig = window.__FIREBASE_CONFIG__ || { projectId: "osnacountdown" };
@@ -1115,16 +1115,54 @@
 
     document.getElementById('link-statistik').addEventListener('click', zeigeStatistik);
 
+    var BRIEFE_SEITENGROESSE = 50;
+    var briefeGeladen = [];       // alle bisher geladenen Nachrichten, chronologisch aufsteigend
+    var briefeCursorDoc = null;   // ältestes geladenes Dokument (für "weitere laden")
+    var briefeKeineWeiterenMehr = false;
+
     async function ladeBriefe() {
       if (!istAngemeldet) return;
       var container = document.getElementById('briefe-liste');
       container.innerHTML = '<p>Lädt...</p>';
 
-      var q = query(collection(db, 'briefe'), orderBy('zeitstempel', 'asc'));
+      var q = query(collection(db, 'briefe'), orderBy('zeitstempel', 'desc'), limit(BRIEFE_SEITENGROESSE));
       var snapshot = await getDocs(q);
 
+      briefeGeladen = snapshot.docs.slice().reverse(); // wieder chronologisch aufsteigend
+      briefeCursorDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
+      briefeKeineWeiterenMehr = snapshot.docs.length < BRIEFE_SEITENGROESSE;
+
+      renderBriefeListe();
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function weitereBriefeLaden() {
+      if (briefeKeineWeiterenMehr || !briefeCursorDoc) return;
+      var container = document.getElementById('briefe-liste');
+      var hoeheVorher = container.scrollHeight;
+
+      var q = query(collection(db, 'briefe'), orderBy('zeitstempel', 'desc'), startAfter(briefeCursorDoc), limit(BRIEFE_SEITENGROESSE));
+      var snapshot = await getDocs(q);
+
+      var neueAeltere = snapshot.docs.slice().reverse();
+      briefeGeladen = neueAeltere.concat(briefeGeladen);
+      briefeCursorDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : briefeCursorDoc;
+      briefeKeineWeiterenMehr = snapshot.docs.length < BRIEFE_SEITENGROESSE;
+
+      renderBriefeListe();
+      // Scroll-Position so anpassen, dass der Bildschirm nicht "springt"
+      container.scrollTop = container.scrollHeight - hoeheVorher;
+    }
+
+    function renderBriefeListe() {
+      var container = document.getElementById('briefe-liste');
       var html = '';
-      snapshot.forEach(function (docSnap) {
+
+      if (!briefeKeineWeiterenMehr) {
+        html += '<button class="frage-button" id="briefe-mehr-button" style="width:100%; margin-bottom:10px; font-size:0.85em; padding:8px;">Weitere Nachrichten laden</button>';
+      }
+
+      briefeGeladen.forEach(function (docSnap) {
         var d = docSnap.data();
         var eigen = d.von === meinUser;
         var datum = new Date(d.zeitstempel);
@@ -1146,7 +1184,10 @@
       });
 
       container.innerHTML = html || '<p style="text-align:center;">Noch keine Nachrichten.</p>';
-      container.scrollTop = container.scrollHeight;
+
+      var mehrButton = document.getElementById('briefe-mehr-button');
+      if (mehrButton) mehrButton.addEventListener('click', weitereBriefeLaden);
+
       aktiviereBriefLongPress();
     }
 
@@ -1402,6 +1443,7 @@
   </script>
 </body>
 </html>
+
 
 
 
