@@ -846,7 +846,11 @@
       }
 
       var diffTage = Math.ceil((startDatum - jetzt()) / 86400000);
-      var anzeigeDatum = naechste.start.split('-').reverse().join('.');
+      // Zeigt das tatsächliche (ggf. auf Freitag vorgezogene) Datum an,
+      // damit Text und Countdown-Zahl zueinander passen.
+      var anzeigeDatum = startDatum.getDate().toString().padStart(2, '0') + '.' +
+        (startDatum.getMonth() + 1).toString().padStart(2, '0') + '.' +
+        startDatum.getFullYear();
 
       if (diffTage > 0) {
         document.getElementById('ferien-text').innerText = '🎒 Noch ' + diffTage + ' Tage bis ' + naechste.name + ' (ab ' + anzeigeDatum + ')';
@@ -1398,6 +1402,7 @@
   </script>
 </body>
 </html>
+
 
 
 
