@@ -145,6 +145,24 @@
       animation-name: fallen-rotieren; animation-timing-function: ease-in; animation-fill-mode: forwards;
     }
     @keyframes fallen-rotieren { to { transform: translateY(115vh) rotate(360deg); opacity: 0.3; } }
+    .feuerwerk-rakete {
+      position: fixed; bottom: 0; width: 4px; height: 16px; border-radius: 2px;
+      pointer-events: none; z-index: 3000; box-shadow: 0 0 8px 2px currentColor;
+      animation-name: feuerwerk-aufstieg; animation-timing-function: cubic-bezier(0.25, 0.65, 0.4, 1); animation-fill-mode: forwards;
+    }
+    @keyframes feuerwerk-aufstieg {
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(var(--flughoehe)); opacity: 1; }
+    }
+    .feuerwerk-funke {
+      position: fixed; width: 6px; height: 6px; border-radius: 50%;
+      pointer-events: none; z-index: 3000; box-shadow: 0 0 6px 1px currentColor;
+      animation-name: feuerwerk-explosion; animation-timing-function: cubic-bezier(0.15, 0.6, 0.3, 1); animation-fill-mode: forwards;
+    }
+    @keyframes feuerwerk-explosion {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+    }
     .deko-partikel {
       position: fixed; top: -20px; border-radius: 50%; opacity: 0.85; pointer-events: none; z-index: 2000;
       animation-name: fallen; animation-timing-function: linear; animation-fill-mode: forwards;
@@ -548,6 +566,60 @@
         (function (el) { setTimeout(function () { el.remove(); }, 6000); })(teil);
       }
     }
+
+    // Echtes Feuerwerk: Raketen fliegen hoch und explodieren dann in Funken nach allen Seiten.
+    function zeigeFeuerwerk() {
+      var farben = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb', '#ffffff'];
+      var anzahlRaketen = 5;
+
+      for (var r = 0; r < anzahlRaketen; r++) {
+        (function (index) {
+          setTimeout(function () {
+            var farbe = farben[Math.floor(Math.random() * farben.length)];
+            var startX = 15 + Math.random() * 70; // vw, nicht ganz am Rand starten
+            var flughoeheVh = 45 + Math.random() * 25; // wie hoch die Rakete fliegt
+
+            var rakete = document.createElement('div');
+            rakete.className = 'feuerwerk-rakete';
+            rakete.style.left = startX + 'vw';
+            rakete.style.color = farbe;
+            rakete.style.background = farbe;
+            rakete.style.setProperty('--flughoehe', '-' + flughoeheVh + 'vh');
+            rakete.style.animationDuration = (0.6 + Math.random() * 0.25) + 's';
+            document.body.appendChild(rakete);
+
+            rakete.addEventListener('animationend', function () {
+              var rect = rakete.getBoundingClientRect();
+              var explosionX = rect.left;
+              var explosionY = rect.top;
+              rakete.remove();
+
+              if (navigator.vibrate) navigator.vibrate(60);
+
+              var anzahlFunken = 26;
+              for (var f = 0; f < anzahlFunken; f++) {
+                var winkel = (f / anzahlFunken) * 2 * Math.PI + (Math.random() * 0.3);
+                var distanz = 55 + Math.random() * 85;
+                var dx = Math.cos(winkel) * distanz;
+                var dy = Math.sin(winkel) * distanz;
+
+                var funke = document.createElement('div');
+                funke.className = 'feuerwerk-funke';
+                funke.style.left = explosionX + 'px';
+                funke.style.top = explosionY + 'px';
+                funke.style.color = farbe;
+                funke.style.background = farbe;
+                funke.style.setProperty('--dx', dx + 'px');
+                funke.style.setProperty('--dy', dy + 'px');
+                funke.style.animationDuration = (0.7 + Math.random() * 0.4) + 's';
+                document.body.appendChild(funke);
+                (function (el) { setTimeout(function () { el.remove(); }, 1200); })(funke);
+              }
+            });
+          }, index * 260);
+        })(r);
+      }
+    }
     function zeigeFallendePartikel(farben, anzahl) {
       anzahl = anzahl || 20;
       for (var i = 0; i < anzahl; i++) {
@@ -709,7 +781,7 @@
       var bisherGefeiert = Number(localStorage.getItem(schluessel) || '0');
       if (vielfachesVon5 > bisherGefeiert) {
         localStorage.setItem(schluessel, String(vielfachesVon5));
-        zeigeKonfetti();
+        zeigeFeuerwerk();
         zeigeGedankeToast('🎆 ' + vielfachesVon5 + '% der Wartezeit geschafft!');
       }
     }
@@ -1562,6 +1634,7 @@
   </script>
 </body>
 </html>
+
 
 
 
