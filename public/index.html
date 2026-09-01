@@ -353,8 +353,8 @@
   <div id="screen-briefe" class="screen hidden">
     <div class="box" style="width: 90vw; max-width: 500px;">
       <div id="briefe-liste"></div>
-      <div style="display:flex; gap:6px; margin-top:10px;">
-        <input type="text" id="brief-eingabe" placeholder="Nachricht schreiben..." style="flex:1; min-width:0; padding:10px; border-radius:10px; border:none; background:var(--card-strong); color:var(--text); font-size:16px;">
+      <div style="display:flex; gap:6px; margin-top:10px; align-items:flex-end;">
+        <textarea id="brief-eingabe" placeholder="Nachricht schreiben..." rows="3" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:none; background:var(--card-strong); color:var(--text); font-size:16px; font-family:inherit; resize:none;"></textarea>
         <button id="brief-senden-button" class="frage-button" style="width:auto; margin:0;">Senden</button>
       </div>
     </div>
@@ -1407,7 +1407,10 @@
 
     document.getElementById('brief-senden-button').addEventListener('click', sendeBrief);
     document.getElementById('brief-eingabe').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') sendeBrief();
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendeBrief();
+      }
     });
 
     function getLetzteGesehenGedankeZeit() {
@@ -1634,6 +1637,7 @@
   </script>
 </body>
 </html>
+
 
 
 
