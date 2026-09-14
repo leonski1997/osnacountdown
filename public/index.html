@@ -923,9 +923,11 @@
 
       var gesamtMs = ZIEL_DATUM - START_DATUM;
       var vergangenMs = heute - START_DATUM;
-      var prozent = Math.min(100, Math.max(0, Math.round((vergangenMs / gesamtMs) * 100)));
+      var prozentGenau = Math.min(100, Math.max(0, (vergangenMs / gesamtMs) * 100));
+      var prozent = Math.round(prozentGenau);
+      var prozentAnzeige = prozentGenau.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
       document.getElementById('fortschritt-bar').style.width = prozent + '%';
-      document.getElementById('fortschritt-text').innerText = prozent + '% der Wartezeit geschafft';
+      document.getElementById('fortschritt-text').innerText = prozentAnzeige + '% der Wartezeit geschafft';
       pruefeProzentMeilenstein(prozent);
 
       var ebButton = document.getElementById('erinnerungsbuch-button');
@@ -1637,6 +1639,7 @@
   </script>
 </body>
 </html>
+
 
 
 
