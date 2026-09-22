@@ -371,8 +371,11 @@
   <div id="fakt-overlay" class="hidden">
     <div class="box">
       <p style="font-size:1.6em; margin:0 0 6px 0;">🎁</p>
-      <p class="fakt-text" id="fakt-text"></p>
-      <button class="frage-button" id="fakt-schliessen-button">Schließen</button>
+      <p class="fakt-text" id="geschenk-zielperson" style="font-weight:bold; margin-bottom:2px;"></p>
+      <p class="fakt-text" id="geschenk-aufgabe"></p>
+      <textarea id="geschenk-antwort" rows="2" placeholder="Deine Antwort/Nachricht dazu (optional)..." style="width:100%; box-sizing:border-box; padding:8px; border-radius:10px; border:none; font-family:inherit; font-size:16px; margin-bottom:10px; resize:none; background:var(--card-strong); color:var(--text);"></textarea>
+      <button class="frage-button" id="fakt-senden-button">In den Chat senden</button>
+      <button class="frage-button" id="fakt-schliessen-button" style="background:#888;">Schließen ohne Senden</button>
     </div>
   </div>
 
@@ -676,80 +679,62 @@
       document.getElementById('geschenk-icon').classList.remove('hidden');
     }
 
+    var AUFGABEN = [
+      "Schreib dem anderen einen richtig schlechten Witz.",
+      "Beschreib in 3 Worten, wie du dich gerade fühlst.",
+      "Erzähl eine peinliche Kindheitserinnerung.",
+      "Schreib ein Kompliment auf Englisch.",
+      "Erfinde einen neuen Spitznamen für den anderen, den es noch nicht gibt.",
+      "Schreib, was du dir gerade am meisten wünschst.",
+      "Erzähl einen Traum, an den du dich noch erinnerst.",
+      "Schick ein Wortspiel mit dem Namen des anderen.",
+      "Beschreib den anderen in nur einem Emoji – und erklär warum.",
+      "Schreib eine Mini-Liebeserklärung in maximal 10 Wörtern.",
+      "Erfinde eine möglichst absurde Ausrede, warum du heute (fiktiv) zu spät dran warst.",
+      "Schreib 3 Dinge, die du am anderen liebst.",
+      "Beschreib laut vor dich hin eine alberne Grimasse, die du gerade ziehst.",
+      "Schreib dem anderen ein kleines Gedicht (auch wenn's sich nicht reimt).",
+      "Erzähl den dümmsten Witz, den du kennst.",
+      "Beschreib euer erstes Date in genau 5 Worten.",
+      "Schick eine völlig übertriebene, kitschige Liebeserklärung.",
+      "Schreib, worauf du dich am meisten freust, wenn ihr wieder zusammen seid.",
+      "Erfinde einen Fantasie-Beruf für den anderen und beschreib ihn.",
+      "Schreib die lustigste Autokorrektur-Panne, an die du dich erinnerst."
+    ];
+
     function oeffneGeschenk() {
       var heute = heutigesDatumSchluessel();
-      document.getElementById('fakt-text').innerText = 'Lädt...';
-      document.getElementById('fakt-overlay').classList.remove('hidden');
       document.getElementById('geschenk-icon').classList.add('hidden');
       localStorage.setItem('geschenkGesehen_' + heute, '1');
-      zeigeKonfetti();
+      zeigeFeuerwerk();
 
-      generiereAppFakten().then(function (fakten) {
-        var fakt = fakten[Math.floor(Math.random() * fakten.length)];
-        document.getElementById('fakt-text').innerText = fakt;
-      });
+      var zielPerson = Math.random() < 0.5 ? 'leon' : 'lotta';
+      var zielName = zielPerson === 'leon' ? 'Leon' : 'Lotta';
+      var aufgabe = AUFGABEN[Math.floor(Math.random() * AUFGABEN.length)];
+
+      document.getElementById('geschenk-zielperson').innerText = '🎯 ' + zielName + ' ist dran:';
+      document.getElementById('geschenk-aufgabe').innerText = aufgabe;
+      document.getElementById('geschenk-antwort').value = '';
+      document.getElementById('fakt-overlay').classList.remove('hidden');
+
+      window._aktuelleGeschenkAufgabe = '🎁 Aufgabe für ' + zielName + ': ' + aufgabe;
     }
 
-    async function generiereAppFakten() {
-      var fakten = [];
+    async function sendeGeschenkAntwort() {
+      var text = document.getElementById('geschenk-antwort').value.trim();
+      document.getElementById('fakt-overlay').classList.add('hidden');
+      if (!text || !meinUser) return;
 
-      var snapshot = await getDocs(collection(db, 'abstimmung'));
-      var beantwortet = 0, einigkeit = 0;
-      var w = { leonFuerLeon: 0, leonFuerLotta: 0, lottaFuerLeon: 0, lottaFuerLotta: 0 };
-      snapshot.forEach(function (docSnap) {
-        var d = docSnap.data();
-        if (d.leon === 'Leon') w.leonFuerLeon++; else if (d.leon === 'Lotta') w.leonFuerLotta++;
-        if (d.lotta === 'Leon') w.lottaFuerLeon++; else if (d.lotta === 'Lotta') w.lottaFuerLotta++;
-        if (d.leon && d.lotta) {
-          beantwortet++;
-          if (d.leon === d.lotta) einigkeit++;
-        }
-      });
+      var vollerText = window._aktuelleGeschenkAufgabe + '\n💬 ' + text;
+      await addDoc(collection(db, 'briefe'), { von: meinUser, text: vollerText, zeitstempel: Date.now() });
 
-      if (beantwortet > 0) {
-        var prozentEinig = Math.round((einigkeit / beantwortet) * 100);
-        fakten.push('📊 Ihr habt schon ' + beantwortet + (beantwortet === 1 ? ' Frage' : ' Fragen') + ' gemeinsam beantwortet!');
-        fakten.push('🤝 Bei ' + prozentEinig + '% eurer Abstimmungen wart ihr euch einig!');
+      if (!document.getElementById('screen-briefe').classList.contains('hidden')) {
+        ladeBriefe();
       }
-
-      var leonGesamt = w.leonFuerLeon + w.leonFuerLotta;
-      var lottaGesamt = w.lottaFuerLeon + w.lottaFuerLotta;
-      if (leonGesamt > 0) {
-        var leonFavorit = w.leonFuerLeon >= w.leonFuerLotta ? 'sich selbst' : 'Lotta';
-        fakten.push('🗳️ Leon stimmt am häufigsten für ' + leonFavorit + '.');
-      }
-      if (lottaGesamt > 0) {
-        var lottaFavorit = w.lottaFuerLotta >= w.lottaFuerLeon ? 'sich selbst' : 'Leon';
-        fakten.push('🗳️ Lotta stimmt am häufigsten für ' + lottaFavorit + '.');
-      }
-
-      var streak = await getStreak();
-      if (streak > 0) {
-        fakten.push('🔥 Ihr seid gerade ' + streak + (streak === 1 ? ' Tag' : ' Tage') + ' am Stück am Abstimmen!');
-      }
-
-      var gLeonSnap = await getDoc(doc(db, 'einstellungen', 'gedankeAnzahl_leon'));
-      var gLottaSnap = await getDoc(doc(db, 'einstellungen', 'gedankeAnzahl_lotta'));
-      var gLeon = gLeonSnap.exists() ? (gLeonSnap.data().anzahl || 0) : 0;
-      var gLotta = gLottaSnap.exists() ? (gLottaSnap.data().anzahl || 0) : 0;
-      if (gLeon > 0 || gLotta > 0) {
-        fakten.push('❤️ "Ich denk an dich" wurde schon ' + (gLeon + gLotta) + 'x gedrückt (Leon ' + gLeon + 'x, Lotta ' + gLotta + 'x).');
-      }
-
-      var briefeSnapshot = await getDocs(collection(db, 'briefe'));
-      var briefeAnzahl = briefeSnapshot.size;
-      if (briefeAnzahl > 0) {
-        fakten.push('💌 Ihr habt euch schon ' + briefeAnzahl + (briefeAnzahl === 1 ? ' Nachricht' : ' Nachrichten') + ' im Brief-Fach geschrieben!');
-      }
-
-      if (fakten.length === 0) {
-        fakten.push('🌱 Eure gemeinsame Statistik startet gerade erst – stimmt heute ab, um die erste Zahl zu sammeln!');
-      }
-
-      return fakten;
     }
 
     document.getElementById('geschenk-icon').addEventListener('click', oeffneGeschenk);
+    document.getElementById('fakt-senden-button').addEventListener('click', sendeGeschenkAntwort);
     document.getElementById('fakt-schliessen-button').addEventListener('click', function () {
       document.getElementById('fakt-overlay').classList.add('hidden');
     });
@@ -763,7 +748,7 @@
         zahl.classList.add('meilenstein-zahl');
         if (letztGefeierterMeilenstein !== tage) {
           letztGefeierterMeilenstein = tage;
-          zeigeKonfetti();
+          zeigeFeuerwerk();
         }
       } else {
         zahl.classList.remove('meilenstein-zahl');
@@ -1639,6 +1624,7 @@
   </script>
 </body>
 </html>
+
 
 
 
