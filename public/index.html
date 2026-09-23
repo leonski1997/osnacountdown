@@ -708,11 +708,11 @@
       localStorage.setItem('geschenkGesehen_' + heute, '1');
       zeigeFeuerwerk();
 
-      var zielPerson = Math.random() < 0.5 ? 'leon' : 'lotta';
-      var zielName = zielPerson === 'leon' ? 'Leon' : 'Lotta';
+      // Wer das Geschenk findet, bekommt die Aufgabe - kein Rätselraten über den anderen.
+      var zielName = meinUser === 'leon' ? 'Leon' : 'Lotta';
       var aufgabe = AUFGABEN[Math.floor(Math.random() * AUFGABEN.length)];
 
-      document.getElementById('geschenk-zielperson').innerText = '🎯 ' + zielName + ' ist dran:';
+      document.getElementById('geschenk-zielperson').innerText = '🎯 Deine Aufgabe:';
       document.getElementById('geschenk-aufgabe').innerText = aufgabe;
       document.getElementById('geschenk-antwort').value = '';
       document.getElementById('fakt-overlay').classList.remove('hidden');
@@ -1624,6 +1624,7 @@
   </script>
 </body>
 </html>
+
 
 
 
