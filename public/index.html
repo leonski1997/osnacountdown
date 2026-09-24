@@ -333,6 +333,7 @@
       <div class="nav">
         <a id="link-historie">📜 Historie ansehen</a>
         <a id="link-statistik">📊 Statistik ansehen</a>
+        <a id="link-aufgaben">🎁 Aufgaben-Archiv ansehen</a>
         <a id="reset-link" class="hidden">🔄 Antwort zurücksetzen</a>
       </div>
     </div>
@@ -348,6 +349,14 @@
   <div id="screen-statistik" class="screen hidden">
     <div id="statistik-inhalt"><p>Lädt...</p></div>
     <div class="nav"><a onclick="document.getElementById('nav-abstimmung').click()">← Zurück</a></div>
+  </div>
+
+  <div id="screen-aufgaben" class="screen hidden">
+    <div class="box" style="width: 90vw; max-width: 500px; max-height: 75vh; overflow-y: auto; text-align:left;">
+      <h2 style="text-align:center;">🎁 Aufgaben-Archiv</h2>
+      <div id="aufgaben-inhalt"><p>Lädt...</p></div>
+      <div class="nav"><a onclick="document.getElementById('nav-abstimmung').click()">← Zurück</a></div>
+    </div>
   </div>
 
   <div id="screen-briefe" class="screen hidden">
@@ -402,7 +411,7 @@
     // WICHTIG: Diese Funktion muss ganz oben stehen, weil sie schon beim allerersten
     // Laden der Seite aufgerufen wird (siehe weiter unten) - definiert VOR ihrer
     // ersten Verwendung, damit kein "undefined"-Fehler auftritt.
-    var BILDSCHIRM_NAMEN = ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik', 'erinnerungsbuch'];
+    var BILDSCHIRM_NAMEN = ['countdown', 'abstimmung', 'briefe', 'historie', 'statistik', 'erinnerungsbuch', 'aufgaben'];
 
     function zeigeScreen(name) {
       BILDSCHIRM_NAMEN.forEach(function (n) {
@@ -1165,6 +1174,42 @@
       document.getElementById('bestaetigung-overlay').classList.remove('hidden');
     });
 
+    async function zeigeAufgaben() {
+      zeigeScreen('aufgaben');
+      var container = document.getElementById('aufgaben-inhalt');
+      container.innerHTML = '<p>Lädt...</p>';
+
+      var snapshot = await getDocs(query(collection(db, 'briefe'), orderBy('zeitstempel', 'asc')));
+      var eintraege = [];
+      snapshot.forEach(function (docSnap) {
+        var d = docSnap.data();
+        if (d.text && d.text.indexOf('🎁 Aufgabe für ') === 0) {
+          var teile = d.text.split('\n💬 ');
+          var kopf = teile[0].replace('🎁 Aufgabe für ', '');
+          var doppelpunktIndex = kopf.indexOf(': ');
+          var name = doppelpunktIndex !== -1 ? kopf.substring(0, doppelpunktIndex) : kopf;
+          var aufgabeText = doppelpunktIndex !== -1 ? kopf.substring(doppelpunktIndex + 2) : '';
+          var antwort = teile.length > 1 ? teile.slice(1).join('\n💬 ') : '(keine Antwort geschrieben)';
+          eintraege.push({ name: name, aufgabe: aufgabeText, antwort: antwort, zeitstempel: d.zeitstempel });
+        }
+      });
+      eintraege.reverse(); // neueste zuerst
+
+      if (eintraege.length === 0) {
+        container.innerHTML = '<p>Noch keine Aufgaben-Antworten vorhanden.</p>';
+        return;
+      }
+
+      var html = '';
+      eintraege.forEach(function (e) {
+        var datum = new Date(e.zeitstempel);
+        var datumText = datum.toLocaleDateString('de-DE');
+        html += '<div class="historie-eintrag"><b>' + escapeHtml(e.name) + '</b> (' + datumText + ')<br>' +
+          '<i>' + escapeHtml(e.aufgabe) + '</i><br>💬 ' + escapeHtml(e.antwort) + '</div>';
+      });
+      container.innerHTML = html;
+    }
+
     async function zeigeStatistik() {
       zeigeScreen('statistik');
       var container = document.getElementById('statistik-inhalt');
@@ -1228,6 +1273,7 @@
     }
 
     document.getElementById('link-statistik').addEventListener('click', zeigeStatistik);
+    document.getElementById('link-aufgaben').addEventListener('click', zeigeAufgaben);
 
     var BRIEFE_SEITENGROESSE = 50;
     var briefeGeladen = [];       // alle bisher geladenen Nachrichten, chronologisch aufsteigend
@@ -1624,6 +1670,7 @@
   </script>
 </body>
 </html>
+
 
 
 
