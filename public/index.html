@@ -679,8 +679,6 @@
         return;
       }
 
-      if (localStorage.getItem('geschenkGesehen_' + heute)) return;
-
       // Die Entscheidung "zeigt sich heute oder nicht" wird EINMAL pro Tag und Gerät
       // getroffen und dauerhaft gespeichert - dadurch kann noch so häufiges Neuladen
       // der Seite daran nichts mehr ändern (kein "Erzwingen" durch Reload möglich).
@@ -730,9 +728,6 @@
     ];
 
     function oeffneGeschenk() {
-      var heute = heutigesDatumSchluessel();
-      document.getElementById('geschenk-icon').classList.add('hidden');
-      localStorage.setItem('geschenkGesehen_' + heute, '1');
       zeigeFeuerwerk();
 
       // Wer das Geschenk findet, bekommt die Aufgabe - kein Rätselraten über den anderen.
@@ -1688,6 +1683,7 @@
   </script>
 </body>
 </html>
+
 
 
 
