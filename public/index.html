@@ -673,6 +673,10 @@
 
       var heute = heutigesDatumSchluessel();
 
+      // Sobald die heutige Aufgabe erledigt (abgeschickt) wurde, bleibt das Icon
+      // für den Rest des Tages versteckt - unabhängig vom Test-Modus.
+      if (localStorage.getItem('geschenkErledigt_' + meinUser + '_' + heute)) return;
+
       // Im Test-Modus (?testdatum=...) immer anzeigen, um es bequem ausprobieren zu können
       if (TEST_DATUM) {
         document.getElementById('geschenk-icon').classList.remove('hidden');
@@ -730,9 +734,17 @@
     function oeffneGeschenk() {
       zeigeFeuerwerk();
 
-      // Wer das Geschenk findet, bekommt die Aufgabe - kein Rätselraten über den anderen.
+      var heute = heutigesDatumSchluessel();
       var zielName = meinUser === 'leon' ? 'Leon' : 'Lotta';
-      var aufgabe = AUFGABEN[Math.floor(Math.random() * AUFGABEN.length)];
+
+      // Die Aufgabe wird nur EINMAL pro Tag ausgewürfelt und dann gespeichert -
+      // erneutes Öffnen (z.B. weil gerade keine Zeit war) zeigt wieder dieselbe.
+      var aufgabeSchluessel = 'geschenkAufgabe_' + meinUser + '_' + heute;
+      var aufgabe = localStorage.getItem(aufgabeSchluessel);
+      if (!aufgabe) {
+        aufgabe = AUFGABEN[Math.floor(Math.random() * AUFGABEN.length)];
+        localStorage.setItem(aufgabeSchluessel, aufgabe);
+      }
 
       document.getElementById('geschenk-zielperson').innerText = '🎯 Deine Aufgabe:';
       document.getElementById('geschenk-aufgabe').innerText = aufgabe;
@@ -749,6 +761,12 @@
 
       var vollerText = window._aktuelleGeschenkAufgabe + '\n💬 ' + text;
       await addDoc(collection(db, 'briefe'), { von: meinUser, text: vollerText, zeitstempel: Date.now() });
+
+      // Erst nach dem tatsächlichen Abschicken gilt die Aufgabe als erledigt -
+      // das Icon verschwindet dann für den Rest des Tages.
+      var heute = heutigesDatumSchluessel();
+      localStorage.setItem('geschenkErledigt_' + meinUser + '_' + heute, '1');
+      document.getElementById('geschenk-icon').classList.add('hidden');
 
       if (!document.getElementById('screen-briefe').classList.contains('hidden')) {
         ladeBriefe();
@@ -1683,6 +1701,7 @@
   </script>
 </body>
 </html>
+
 
 
 
