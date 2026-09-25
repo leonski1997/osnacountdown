@@ -681,11 +681,29 @@
 
       if (localStorage.getItem('geschenkGesehen_' + heute)) return;
 
-      var seed = 0;
-      for (var i = 0; i < heute.length; i++) { seed += heute.charCodeAt(i); }
-      if ((seed % 100) / 100 >= EASTER_EGG_TAGES_CHANCE) return;
+      // Die Entscheidung "zeigt sich heute oder nicht" wird EINMAL pro Tag und Gerät
+      // getroffen und dauerhaft gespeichert - dadurch kann noch so häufiges Neuladen
+      // der Seite daran nichts mehr ändern (kein "Erzwingen" durch Reload möglich).
+      var entscheidungsSchluessel = 'geschenkEntscheidung_' + meinUser + '_' + heute;
+      var gespeicherteEntscheidung = localStorage.getItem(entscheidungsSchluessel);
 
-      document.getElementById('geschenk-icon').classList.remove('hidden');
+      var zeigen;
+      if (gespeicherteEntscheidung !== null) {
+        zeigen = gespeicherteEntscheidung === '1';
+      } else {
+        // Etwas stabilerer Streuwert als eine reine Zeichen-Summe (djb2-artiger Hash).
+        var hash = 5381;
+        var text = heute + '_' + meinUser;
+        for (var i = 0; i < text.length; i++) {
+          hash = ((hash * 33) ^ text.charCodeAt(i)) >>> 0;
+        }
+        zeigen = (hash % 1000) / 1000 < EASTER_EGG_TAGES_CHANCE;
+        localStorage.setItem(entscheidungsSchluessel, zeigen ? '1' : '0');
+      }
+
+      if (zeigen) {
+        document.getElementById('geschenk-icon').classList.remove('hidden');
+      }
     }
 
     var AUFGABEN = [
@@ -1670,6 +1688,7 @@
   </script>
 </body>
 </html>
+
 
 
 
