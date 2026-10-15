@@ -76,7 +76,7 @@
     }
     .box.eingeklappt #box-inhalt { display: none; }
     .box.eingeklappt #box-toggle { display: none; }
-    .box.eingeklappt #geschenk-icon { display: none; }
+    .box.eingeklappt #geschenk-icon { position: static; margin-right: 12px; flex-shrink: 0; }
     .box.eingeklappt #box-toggle-label { display: inline-block; }
     #screen-countdown.eingeklappt-modus { justify-content: safe flex-end; padding-bottom: 100px; }
     h1 { font-size: 3em; margin: 0 0 4px 0; }
@@ -693,13 +693,23 @@
       if (gespeicherteEntscheidung !== null) {
         zeigen = gespeicherteEntscheidung === '1';
       } else {
-        // Etwas stabilerer Streuwert als eine reine Zeichen-Summe (djb2-artiger Hash).
-        var hash = 5381;
-        var text = heute + '_' + meinUser;
+        // Guter Streuwert (FNV-1a + Murmur-Finalizer), damit sich Tage nicht ähneln.
+        var hash = 2166136261;
+        var text = heute + '_' + meinUser + '_geschenk';
         for (var i = 0; i < text.length; i++) {
-          hash = ((hash * 33) ^ text.charCodeAt(i)) >>> 0;
+          hash ^= text.charCodeAt(i);
+          hash = Math.imul(hash, 16777619) >>> 0;
         }
+        hash ^= hash >>> 16; hash = Math.imul(hash, 2246822507) >>> 0;
+        hash ^= hash >>> 13; hash = Math.imul(hash, 3266489909) >>> 0;
+        hash ^= hash >>> 16; hash = hash >>> 0;
         zeigen = (hash % 1000) / 1000 < EASTER_EGG_TAGES_CHANCE;
+        // Garantie: spätestens nach 3 Tagen ohne Geschenk gibt es wieder eins.
+        var letzter = Number(localStorage.getItem('geschenkLetzterTag_' + meinUser) || 0);
+        var tagNr = Math.floor(Date.parse(heute + 'T12:00:00Z') / 86400000);
+        if (!zeigen && letzter && tagNr - letzter >= 3) zeigen = true;
+        if (!letzter && !zeigen) localStorage.setItem('geschenkLetzterTag_' + meinUser, String(tagNr - 1));
+        if (zeigen) localStorage.setItem('geschenkLetzterTag_' + meinUser, String(tagNr));
         localStorage.setItem(entscheidungsSchluessel, zeigen ? '1' : '0');
       }
 
