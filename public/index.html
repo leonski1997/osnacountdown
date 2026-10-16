@@ -256,6 +256,22 @@
       display: flex; align-items: center; justify-content: center; z-index: 4000;
     }
     .fakt-text { font-size: 1.05em; margin: 6px 0 18px 0; }
+    #halbzeit-overlay.hidden { display: none; }
+    #halbzeit-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center; z-index: 4000;
+    }
+    #halbzeit-overlay .box { animation: halbzeit-pop 0.6s cubic-bezier(.2,1.4,.4,1); }
+    @keyframes halbzeit-pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .halbzeit-titel {
+      font-size: 2.4em; font-weight: 800; margin: 0 0 4px 0; letter-spacing: 1px;
+      background: linear-gradient(90deg, #ffb300, #fff3a0, #ffb300);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .halbzeit-stats { display: flex; gap: 8px; margin: 14px 0; }
+    .halbzeit-stat { flex: 1; background: var(--card-strong); border-radius: 12px; padding: 10px 4px; }
+    .halbzeit-stat b { display: block; font-size: 1.5em; }
+    .halbzeit-stat span { font-size: 0.75em; opacity: 0.8; }
     @media print {
       #bottom-nav, #user-header, #modus-button, #testdatum-banner, .frage-button, .nav a { display: none !important; }
       body { background: white !important; }
@@ -385,6 +401,22 @@
       <textarea id="geschenk-antwort" rows="2" placeholder="Deine Antwort/Nachricht dazu (optional)..." style="width:100%; box-sizing:border-box; padding:8px; border-radius:10px; border:none; font-family:inherit; font-size:16px; margin-bottom:10px; resize:none; background:var(--card-strong); color:var(--text);"></textarea>
       <button class="frage-button" id="fakt-senden-button">In den Chat senden</button>
       <button class="frage-button" id="fakt-schliessen-button" style="background:#888;">Schließen ohne Senden</button>
+    </div>
+  </div>
+
+  <div id="halbzeit-overlay" class="hidden">
+    <div class="box">
+      <p style="font-size:2em; margin:0;">🎉</p>
+      <p class="halbzeit-titel">HALBZEIT!</p>
+      <p style="font-size:1.1em; margin:0;"><b>50 %</b> der Wartezeit sind geschafft</p>
+      <div class="halbzeit-stats">
+        <div class="halbzeit-stat"><b id="halbzeit-geschafft">-</b><span>Tage geschafft</span></div>
+        <div class="halbzeit-stat"><b id="halbzeit-wochen">-</b><span>Wochen geschafft</span></div>
+        <div class="halbzeit-stat"><b id="halbzeit-noch">-</b><span>Tage noch</span></div>
+      </div>
+      <p class="fakt-text" style="margin-top:0;">Die Hälfte liegt hinter euch – und jeder Tag bringt euch ein Stück näher zusammen ❤️</p>
+      <button class="frage-button" id="halbzeit-senden-button">💌 Halbzeit-Nachricht senden</button>
+      <button class="frage-button" id="halbzeit-schliessen-button" style="background:#888;">Weiter</button>
     </div>
   </div>
 
@@ -580,9 +612,11 @@
     }
 
     // Echtes Feuerwerk: Raketen fliegen hoch und explodieren dann in Funken nach allen Seiten.
-    function zeigeFeuerwerk() {
-      var farben = ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb', '#ffffff'];
-      var anzahlRaketen = 5;
+    function zeigeFeuerwerk(optionen) {
+      optionen = optionen || {};
+      var farben = optionen.farben || ['#ff5252', '#ffd740', '#69f0ae', '#40c4ff', '#e040fb', '#ffffff'];
+      var anzahlRaketen = optionen.raketen || 5;
+      var abstandMs = optionen.abstandMs || 260;
 
       for (var r = 0; r < anzahlRaketen; r++) {
         (function (index) {
@@ -608,7 +642,7 @@
 
               if (navigator.vibrate) navigator.vibrate(60);
 
-              var anzahlFunken = 26;
+              var anzahlFunken = optionen.funken || 26;
               for (var f = 0; f < anzahlFunken; f++) {
                 var winkel = (f / anzahlFunken) * 2 * Math.PI + (Math.random() * 0.3);
                 var distanz = 55 + Math.random() * 85;
@@ -628,7 +662,7 @@
                 (function (el) { setTimeout(function () { el.remove(); }, 1200); })(funke);
               }
             });
-          }, index * 260);
+          }, index * abstandMs);
         })(r);
       }
     }
@@ -807,19 +841,71 @@
 
     // 5%-Fortschritts-Feuerwerk: erscheint pro 5%-Schritt garantiert nur EINMAL
     // (dauerhaft im Browser gespeichert, übersteht also auch ein Neuladen).
-    function pruefeProzentMeilenstein(prozent) {
+    function pruefeProzentMeilenstein(prozent, prozentGenau) {
       if (!meinUser || prozent <= 0) return;
       var vielfachesVon5 = Math.floor(prozent / 5) * 5;
       if (vielfachesVon5 <= 0) return;
 
       var schluessel = 'gefeierterProzentMeilenstein_' + meinUser;
       var bisherGefeiert = Number(localStorage.getItem(schluessel) || '0');
+
+      // Halbzeit (50 %): besonderer Moment, einmalig pro Person (im Testmodus immer wieder)
+      var halbzeitSchluessel = 'halbzeitGefeiert_' + meinUser;
+      if (prozentGenau >= 50 && (TEST_DATUM || !localStorage.getItem(halbzeitSchluessel))) {
+        if (!TEST_DATUM) {
+          localStorage.setItem(halbzeitSchluessel, '1');
+          localStorage.setItem(schluessel, String(Math.max(bisherGefeiert, vielfachesVon5)));
+        }
+        zeigeHalbzeit();
+        return;
+      }
       if (vielfachesVon5 > bisherGefeiert) {
         localStorage.setItem(schluessel, String(vielfachesVon5));
         zeigeFeuerwerk();
         zeigeGedankeToast('🎆 ' + vielfachesVon5 + '% der Wartezeit geschafft!');
       }
     }
+
+    var GOLD_FARBEN = ['#ffd740', '#ffb300', '#fff3a0', '#ffffff', '#ffca28'];
+
+    function zeigeHalbzeit() {
+      var heute = jetzt();
+      var geschafft = Math.floor((heute - START_DATUM) / 86400000);
+      var noch = Math.max(0, Math.ceil((ZIEL_DATUM - heute) / 86400000));
+      document.getElementById('halbzeit-geschafft').innerText = geschafft;
+      document.getElementById('halbzeit-wochen').innerText = Math.floor(geschafft / 7);
+      document.getElementById('halbzeit-noch').innerText = noch;
+      window._halbzeitText = '🎉 HALBZEIT! 50% unserer Wartezeit sind geschafft – ' + geschafft +
+        ' Tage liegen hinter uns, nur noch ' + noch + ' Tage bis wir wieder zusammen sind ❤️';
+      var partnerName = meinUser === 'leon' ? 'Lotta' : 'Leon';
+      document.getElementById('halbzeit-senden-button').innerText = '💌 Halbzeit-Nachricht an ' + partnerName + ' senden';
+      document.getElementById('halbzeit-senden-button').disabled = false;
+      document.getElementById('halbzeit-overlay').classList.remove('hidden');
+
+      // Grosses goldenes Feuerwerk in mehreren Wellen plus Goldregen
+      zeigeFeuerwerk({ raketen: 9, funken: 40, farben: GOLD_FARBEN, abstandMs: 330 });
+      setTimeout(function () { zeigeFeuerwerk({ raketen: 7, funken: 36 }); }, 3200);
+      setTimeout(function () { zeigeFeuerwerk({ raketen: 9, funken: 40, farben: GOLD_FARBEN, abstandMs: 300 }); }, 6400);
+      zeigeFallendePartikel(GOLD_FARBEN, 40);
+      if (navigator.vibrate) navigator.vibrate([120, 80, 120, 80, 250]);
+    }
+
+    document.getElementById('halbzeit-schliessen-button').addEventListener('click', function () {
+      document.getElementById('halbzeit-overlay').classList.add('hidden');
+    });
+    document.getElementById('halbzeit-senden-button').addEventListener('click', async function () {
+      var btn = document.getElementById('halbzeit-senden-button');
+      if (!meinUser || !window._halbzeitText) return;
+      btn.disabled = true;
+      try {
+        await addDoc(collection(db, 'briefe'), { von: meinUser, text: window._halbzeitText, zeitstempel: Date.now() });
+        btn.innerText = '✅ Gesendet!';
+        setTimeout(function () { document.getElementById('halbzeit-overlay').classList.add('hidden'); }, 900);
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerText = 'Senden fehlgeschlagen – nochmal versuchen';
+      }
+    });
 
     function pruefeSpezialtag() {
       var box = document.querySelector('#screen-countdown .box');
@@ -963,7 +1049,7 @@
       var prozentAnzeige = prozentGenau.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
       document.getElementById('fortschritt-bar').style.width = prozent + '%';
       document.getElementById('fortschritt-text').innerText = prozentAnzeige + '% der Wartezeit geschafft';
-      pruefeProzentMeilenstein(prozent);
+      pruefeProzentMeilenstein(prozent, prozentGenau);
 
       var ebButton = document.getElementById('erinnerungsbuch-button');
       if (tage <= 0) { ebButton.classList.remove('hidden'); } else { ebButton.classList.add('hidden'); }
@@ -1630,7 +1716,7 @@
     var wischStartX = 0, wischStartY = 0;
 
     function irgendeinDialogOffen() {
-      var overlays = ['bestaetigung-overlay', 'brief-menu-overlay', 'fakt-overlay'];
+      var overlays = ['bestaetigung-overlay', 'brief-menu-overlay', 'fakt-overlay', 'halbzeit-overlay'];
       return overlays.some(function (id) {
         var el = document.getElementById(id);
         return el && !el.classList.contains('hidden');
